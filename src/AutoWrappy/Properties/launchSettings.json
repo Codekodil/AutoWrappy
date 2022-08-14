@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "AutoWrappy": {
+      "commandName": "Project",
+      "commandLineArgs": "-d \"../../../../TestDll\" -cpp \"../../../../TestDll/autoExtern.cpp\" -cs \"../../../../Testing/autoImport.cs\" -dll \"TestDll\""
+    }
+  }
+}
