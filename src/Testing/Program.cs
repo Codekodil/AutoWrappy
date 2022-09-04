@@ -10,6 +10,7 @@ Console.WriteLine($"15: " + pde.Sum(a, a.Length));
 using (var pdi = new PointerDispose())
 {
 	Console.WriteLine($"5: " + pdi.Five());
+	pdi.PointerValue(pdi.ThisPointer());
 }
 
 var sa = new SharedAlive(4);

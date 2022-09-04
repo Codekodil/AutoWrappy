@@ -17,4 +17,4 @@ void TestDll::SharedAlive::PrintTwice(std::shared_ptr<SharedAll> printer)
 	printer->Print();
 }
 
-double TestDll::SharedAlive::HalfNine(PointerDelete* pDelete) { return pDelete->Half(pDelete->Nine()); }
+double TestDll::SharedAlive::HalfNine(PointerDelete* pDelete) { return pDelete->Half(static_cast<int>(pDelete->Nine())); }

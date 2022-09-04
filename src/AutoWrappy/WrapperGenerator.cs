@@ -286,6 +286,8 @@ namespace AutoWrappy
 
 			bool ValidateArgument(ParsedArgument argument)
 			{
+				if (argument.Type.Name == "void")
+					return !argument.Type.Shared && !argument.Type.Array && argument.Type.Pointer;
 				if (argument.Type.Name == "string")
 					return !argument.Type.Shared && !argument.Type.Pointer && !argument.Type.Array;
 				if (_buildInTypes.Contains(argument.Type.Name))
@@ -305,14 +307,14 @@ namespace AutoWrappy
 			bool ValidateReturnType(ParsedType type)
 			{
 				if (_buildInTypes.Contains(type.Name) || type.Name == "void")
-					return !type.Shared && !type.Array && (!type.Pointer || type.Name == "char");
+					return !type.Shared && !type.Array && (!type.Pointer || type.Name == "void" || type.Name == "char");
 				if (_parsedClasses.TryGetValue(type.Name, out var c))
 					return !type.Array && type.Pointer != type.Shared && type.Shared == c.Shared;
 				return false;
 			}
 		}
 
-		public void GenerateCpp(string path, string pch)
+		public void GenerateCpp(string path, string? pch)
 		{
 			using (var file = new StreamWriter(path))
 			{
@@ -342,7 +344,7 @@ namespace AutoWrappy
 						var returnFormat = "{0}";
 						if (_parsedClasses.TryGetValue(f.Return.Name, out var returnC) && returnC.Shared)
 							returnFormat = $"return new std::shared_ptr<{NameWithNamespaceCpp(returnC)}>({{0}})";
-						else if (f.Return.Name != "void")
+						else if (f.Return.Name != "void" || f.Return.Pointer)
 							returnFormat = "return {0}";
 
 						file.Write($"__declspec(dllexport) {TypeToString(f.Return)} __stdcall ");
@@ -433,7 +435,7 @@ namespace AutoWrappy
 						var returnFormat = "{0}";
 						if (_parsedClasses.TryGetValue(f.Return.Name, out var returnC))
 							returnFormat = $"return new {NameWithNamespaceCs(returnC)}((IntPtr?){{0}})";
-						else if (f.Return.Name != "void")
+						else if (f.Return.Name != "void" || f.Return.Pointer)
 							returnFormat = "return {0}";
 						file.Write(string.Format(returnFormat, $"Wrappy_{c.Name}_{f.Name}(Native??IntPtr.Zero{AppliedArguments(f.Arguments)})") + ";");
 						if (c.Dispose) file.Write("}");

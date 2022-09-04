@@ -8,6 +8,8 @@ namespace TestDll
 	struct PointerDispose
 	{
 		int Five();
+		void* ThisPointer();
+		void PointerValue(void* pointer);
 	};
 }
 
