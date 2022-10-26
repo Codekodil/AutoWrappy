@@ -95,12 +95,13 @@ namespace AutoWrappy
 						var isStruct = match(i, "struct", null, "{") || match(i, "struct", null, ":");
 						if (isStruct || match(i, "class", null, "{") || match(i, "class", null, ":"))
 						{
+							var name = matches[0];
 							isPublic = isStruct;
 							if (currentClass != null)
 								yield return currentClass;
 							currentClass = new ParsedClass
 							{
-								Name = matches[0],
+								Name = name,
 								Namespace = currentNamespace,
 								SourcePath = filePath,
 								Shared = shared,
