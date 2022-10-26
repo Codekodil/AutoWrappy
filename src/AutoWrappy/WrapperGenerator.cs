@@ -92,8 +92,8 @@ namespace AutoWrappy
 						isPublic = false;
 					else
 					{
-						var isStruct = match(i, "struct", null, "{");
-						if (isStruct || match(i, "class", null, "{"))
+						var isStruct = match(i, "struct", null, "{") || match(i, "struct", null, ":");
+						if (isStruct || match(i, "class", null, "{") || match(i, "class", null, ":"))
 						{
 							isPublic = isStruct;
 							if (currentClass != null)

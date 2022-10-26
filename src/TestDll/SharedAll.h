@@ -9,7 +9,13 @@
 
 namespace TestDll
 {
-	class SharedAll
+	struct Ignore //WRAPPY_IGNORE
+	{};
+	template<typename T>
+	struct Base //WRAPPY_IGNORE
+	{};
+
+	class SharedAll :public Base<Ignore>
 	{
 	public:
 		SharedAll(int i);
