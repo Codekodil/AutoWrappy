@@ -317,7 +317,8 @@ namespace AutoWrappy
 
 		public void GenerateCpp(string path, string? pch)
 		{
-			using (var file = new StreamWriter(path))
+			string resultingFile;
+			using (var file = new StringWriter())
 			{
 				if (pch != null)
 					file.WriteLine(@$"#include""{pch}""");
@@ -361,7 +362,19 @@ namespace AutoWrappy
 					}
 				}
 				file.Write("}");
+				resultingFile = file.ToString();
 			}
+
+			try
+			{
+				if (File.ReadAllText(path) != resultingFile)
+					throw new Exception();
+			}
+			catch (Exception)
+			{
+				File.WriteAllText(path, resultingFile);
+			}
+
 
 
 			string ExternalArguments(List<ParsedArgument> arg)
@@ -397,7 +410,8 @@ namespace AutoWrappy
 
 		public void GenerateCs(string path, string dll)
 		{
-			using (var file = new StreamWriter(path))
+			string resultingFile;
+			using (var file = new StringWriter())
 			{
 				foreach (var c in _parsedClasses.Values)
 				{
@@ -476,6 +490,17 @@ namespace AutoWrappy
 
 					file.Write("}}");
 				}
+				resultingFile = file.ToString();
+			}
+
+			try
+			{
+				if (File.ReadAllText(path) != resultingFile)
+					throw new Exception();
+			}
+			catch (Exception)
+			{
+				File.WriteAllText(path, resultingFile);
 			}
 
 			string ExternalArguments(List<ParsedArgument> arg, bool prefix)
