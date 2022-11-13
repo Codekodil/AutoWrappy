@@ -10,6 +10,7 @@ namespace TestDll
 		int Five();
 		void* ThisPointer();
 		void PointerValue(void* pointer);
+		void(__stdcall* OnFive)();
 	};
 }
 

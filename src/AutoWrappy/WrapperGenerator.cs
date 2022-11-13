@@ -126,6 +126,17 @@ namespace AutoWrappy
 								Console.WriteLine($"Wrappy:  with function {function.Name}");
 								i += length - 1;
 							}
+							else if (tryParseEvent(i, out var callback, out length))
+							{
+								if (delete || dispose)
+								{
+									currentClass.Events.Add(callback);
+									Console.WriteLine($"Wrappy:  with event {callback.Name}");
+								}
+								else
+									Console.WriteLine($"Wrappy:  events require WRAPPY_DELETE or WRAPPY_DISPOSE ({callback.Name})");
+								i += length - 1;
+							}
 						}
 					}
 				}
@@ -179,6 +190,32 @@ namespace AutoWrappy
 							if (!tryParseArgument(i, out var argument, out var aLength))
 								return false;
 							function.Arguments.Add(argument);
+							i += aLength;
+						}
+						elementLength = Math.Max(0, i - startingI + 1);
+						return true;
+					}
+				}
+				return false;
+			}
+
+			bool tryParseEvent(int i, [MaybeNullWhen(false)] out ParsedEvent callback, out int elementLength)
+			{
+				callback = null;
+				elementLength = 0;
+				var startingI = i;
+				if (tryParseType(i, out var type, out var tLength))
+				{
+					i += tLength;
+					if (match(i, "(", "__stdcall", "*", null, ")", "("))
+					{
+						callback = new ParsedEvent { Name = matches[0], Return = type };
+						i += 6;
+						while (!match(i, ")"))
+						{
+							if (!tryParseArgument(i, out var argument, out var aLength))
+								return false;
+							callback.Arguments.Add(argument);
 							i += aLength;
 						}
 						elementLength = Math.Max(0, i - startingI + 1);
@@ -283,7 +320,19 @@ namespace AutoWrappy
 
 		private void RemoveInvalidFunctions(ParsedClass c)
 		{
+			c.Constructors.RemoveAll(c => !c.Arguments.All(ValidateArgument));
 			c.Functions.RemoveAll(f => !ValidateReturnType(f.Return) || !f.Arguments.All(ValidateArgument));
+			c.Events.RemoveAll(e => !ValidateReturnType(e.Return) || !e.Arguments.All(ValidateArgument));
+
+			c.Events.RemoveAll(e =>
+			{
+				if (e.Return.Shared || e.Arguments.Any(a => a.Type.Shared))
+				{
+					Console.WriteLine($"Wrappy: Events with shared_ptr are currently not supported ({c.Name}::{e.Name})");
+					return true;
+				}
+				return false;
+			});
 
 			bool ValidateArgument(ParsedArgument argument)
 			{
@@ -354,6 +403,13 @@ namespace AutoWrappy
 						file.Write(String.Format(returnFormat, $"{selfAccess}->{f.Name}({AppliedArguments(f.Arguments)})"));
 						file.WriteLine(";}");
 					}
+					foreach (var e in c.Events)
+					{
+						file.Write($"__declspec(dllexport) void __stdcall ");
+						file.Write($"Wrappy_{c.Name}_SetEvent_{e.Name}({selfType}* self, {TypeToString(e.Return)}(__stdcall* event)({ExternalArguments(e.Arguments).TrimStart(',')})){{");
+						file.Write($"{selfAccess}->{e.Name} = event");
+						file.WriteLine(";}");
+					}
 					if (c.Delete || c.Dispose)
 					{
 						file.Write("__declspec(dllexport) void __stdcall ");
@@ -415,8 +471,10 @@ namespace AutoWrappy
 			{
 				foreach (var c in _parsedClasses.Values)
 				{
-					var lockStatement = @$"if(!Native.HasValue)throw new ObjectDisposedException(""{c.Name}"");";
+					var lockStatement = c.Dispose ? @$"if(!Native.HasValue)throw new ObjectDisposedException(""{c.Name}"");" : "";
 					lockStatement = $"{lockStatement}lock(Locker){{{lockStatement}";
+
+					var undisposedSet = c.Dispose && !c.Delete;
 
 					file.Write($"namespace {NamespaceCs(c)}{{");
 					file.Write($"internal class {c.Name}");
@@ -424,10 +482,13 @@ namespace AutoWrappy
 						file.Write(":IDisposable");
 					file.Write("{public IntPtr? Native;");
 					file.WriteLine($"public {c.Name}(IntPtr? native){{Native=native;}}");
-					if (c.Dispose)
+					if (c.Dispose || c.Events.Count > 0)
 						file.WriteLine($"private readonly object Locker=new object();");
 					if (c.Owner)
 						file.WriteLine("public bool Owner=true;");
+
+					if(undisposedSet)
+						file.WriteLine($"public static HashSet<{c.Name}>Undisposed{{get;}}=new HashSet<{c.Name}>();");
 
 					foreach (var f in c.Constructors)
 					{
@@ -436,7 +497,10 @@ namespace AutoWrappy
 						file.Write($"({NativeExternalArguments(f.Arguments, true).TrimStart(',')});");
 
 						file.Write($"public {c.Name}({ExternalArguments(f.Arguments, false).TrimStart(',')})");
-						file.WriteLine($"{{Native=Wrappy_New_{c.Name}({AppliedArguments(f.Arguments).TrimStart(',')});}}");
+						file.Write($"{{Native=Wrappy_New_{c.Name}({AppliedArguments(f.Arguments).TrimStart(',')});");
+						if (undisposedSet)
+							file.Write($"lock(Undisposed)Undisposed.Add(this);");
+						file.WriteLine($"}}");
 					}
 					foreach (var f in c.Functions)
 					{
@@ -456,6 +520,49 @@ namespace AutoWrappy
 						if (c.Dispose) file.Write("}");
 						file.WriteLine("}");
 					}
+					foreach (var e in c.Events)
+					{
+						file.Write($"private delegate {NativeTypeToString(e.Return)} {e.Name}Delegate_Native");
+						file.Write($"({NativeExternalArguments(e.Arguments, true).TrimStart(',')});");
+						file.Write($"private {e.Name}Delegate_Native? {e.Name}Delegate_Native_Object;");
+
+						file.Write(@$"[System.Runtime.InteropServices.DllImport(""{dll}"",CallingConvention=System.Runtime.InteropServices.CallingConvention.StdCall)]");
+						file.Write($"private static extern void Wrappy_{c.Name}_SetEvent_{e.Name}");
+						file.Write($"(IntPtr self,{e.Name}Delegate_Native? action);");
+
+						file.Write($"public delegate {TypeToString(e.Return)} {e.Name}Delegate");
+						file.Write($"({ExternalArguments(e.Arguments, false).TrimStart(',')});");
+
+						var returnFormat = "{0}";
+						if (_parsedClasses.TryGetValue(e.Return.Name, out var returnC))
+							returnFormat = @$"return {{0}}.Native??throw new ObjectDisposedException(""{returnC?.Name}"")";
+						else if (e.Return.Name != "void" || e.Return.Pointer)
+							returnFormat = "return {0}??default";
+
+						file.Write($"private {e.Name}Delegate? {e.Name}Delegate_Object;");
+						file.Write($"public event {e.Name}Delegate {e.Name}{{add{{");
+						file.Write(lockStatement);
+						file.Write($"{e.Name}Delegate_Object+=value;");
+						file.Write($"if({e.Name}Delegate_Native_Object==null){{{e.Name}Delegate_Native_Object=({string.Join(",", e.Arguments.Select(a => a.Name.ToLower()))})=>{{");
+						file.Write(string.Format(returnFormat, $"{e.Name}Delegate_Object?.Invoke({string.Join(",", e.Arguments.Select(DelegateArgument))})"));
+						string DelegateArgument(ParsedArgument a)
+						{
+							if (_parsedClasses.TryGetValue(a.Type.Name, out var returnC))
+								return $"new {NameWithNamespaceCs(returnC)}((IntPtr?){a.Name})";
+							return a.Name.ToLower();
+						}
+						file.Write($";}};Wrappy_{c.Name}_SetEvent_{e.Name}(Native??IntPtr.Zero,{e.Name}Delegate_Native_Object);}}}}}}");
+						file.Write($"remove{{{e.Name}Delegate_Object-=value;}}");
+						file.WriteLine($"}}");
+					}
+					if (c.Events.Count > 0)
+					{
+						file.Write($"private void ClearDelegates(){{");
+						file.Write($"if(!Native.HasValue)return;lock(Locker){{if(!Native.HasValue)return;");
+						foreach (var e in c.Events)
+							file.Write($"if({e.Name}Delegate_Native_Object!=null){{Wrappy_{c.Name}_SetEvent_{e.Name}(Native??IntPtr.Zero,null);{e.Name}Delegate_Native_Object=null;}}");
+						file.WriteLine($"}}}}");
+					}
 					if (c.Delete || c.Dispose)
 					{
 						file.Write(@$"[System.Runtime.InteropServices.DllImport(""{dll}"")]");
@@ -465,6 +572,10 @@ namespace AutoWrappy
 						{
 							file.Write("public void Dispose(){");
 							file.Write(lockStatement);
+							if (undisposedSet)
+								file.Write($"lock(Undisposed)Undisposed.Remove(this);");
+							if (c.Events.Count > 0)
+								file.Write($"ClearDelegates();");
 							if (c.Owner)
 								file.WriteLine($"if(Owner){{Wrappy_Delete_{c.Name}(Native.Value);Native=null;}}}}}}");
 							else
@@ -472,6 +583,8 @@ namespace AutoWrappy
 							if (c.Delete)
 							{
 								file.Write($"~{c.Name}(){{");
+								if (c.Events.Count > 0)
+									file.Write($"ClearDelegates();");
 								if (c.Owner)
 									file.WriteLine($"if(Native.HasValue&&Owner)Wrappy_Delete_{c.Name}(Native.Value);}}");
 								else
@@ -481,6 +594,8 @@ namespace AutoWrappy
 						else if (c.Delete)
 						{
 							file.Write($"~{c.Name}(){{");
+							if (c.Events.Count > 0)
+								file.Write($"ClearDelegates();");
 							if (c.Owner)
 								file.WriteLine($"if(Owner)Wrappy_Delete_{c.Name}(Native??IntPtr.Zero);}}");
 							else
@@ -488,7 +603,7 @@ namespace AutoWrappy
 						}
 					}
 
-					file.Write("}}");
+					file.WriteLine("}}");
 				}
 				resultingFile = file.ToString();
 			}

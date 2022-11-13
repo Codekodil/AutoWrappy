@@ -1,7 +1,6 @@
 ﻿using TestDll;
 
 var pde = new PointerDelete();
-var result = pde.Half((float)pde.Add(pde.Nine(), .1));
 Console.WriteLine($"4.55: " + pde.Half((float)pde.Add(pde.Nine(), .1)));
 
 var a = new[] { 1, 2, 3, 4, 5 };
@@ -14,9 +13,11 @@ using (var pdi = new PointerDispose())
 }
 
 var sa = new SharedAlive(4);
-Console.WriteLine($"8: " + sa.Two());
+sa.TwoCallback += a => a + 7;
+Console.WriteLine($"15: " + sa.Two());
 using (var made = sa.MakeDispose())
 {
+	made.OnFive += () => Console.WriteLine($"OnFive");
 	Console.WriteLine($"5: " + made.Five());
 }
 using (var made = sa.MakePrint(10))

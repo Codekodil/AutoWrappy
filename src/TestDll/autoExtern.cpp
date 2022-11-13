@@ -16,6 +16,7 @@ __declspec(dllexport) TestDll::PointerDispose* __stdcall Wrappy_New_PointerDispo
 __declspec(dllexport) int __stdcall Wrappy_PointerDispose_Five(TestDll::PointerDispose* self){return self->Five();}
 __declspec(dllexport) void* __stdcall Wrappy_PointerDispose_ThisPointer(TestDll::PointerDispose* self){return self->ThisPointer();}
 __declspec(dllexport) void __stdcall Wrappy_PointerDispose_PointerValue(TestDll::PointerDispose* self,void* arg_pointer){self->PointerValue(arg_pointer);}
+__declspec(dllexport) void __stdcall Wrappy_PointerDispose_SetEvent_OnFive(TestDll::PointerDispose* self, void(__stdcall* event)()){self->OnFive = event;}
 __declspec(dllexport) void __stdcall Wrappy_Delete_PointerDispose(TestDll::PointerDispose* self){{delete self;}}
 __declspec(dllexport) std::shared_ptr<TestDll::SharedAlive>* __stdcall Wrappy_New_SharedAlive(double arg_a){return new std::shared_ptr<TestDll::SharedAlive>(new TestDll::SharedAlive(arg_a));}
 __declspec(dllexport) int __stdcall Wrappy_SharedAlive_Two(std::shared_ptr<TestDll::SharedAlive>* self){return (*self)->Two();}
@@ -23,6 +24,9 @@ __declspec(dllexport) TestDll::PointerDispose* __stdcall Wrappy_SharedAlive_Make
 __declspec(dllexport) std::shared_ptr<TestDll::SharedAll>* __stdcall Wrappy_SharedAlive_MakePrint(std::shared_ptr<TestDll::SharedAlive>* self,int arg_i){return new std::shared_ptr<TestDll::SharedAll>((*self)->MakePrint(arg_i));}
 __declspec(dllexport) void __stdcall Wrappy_SharedAlive_PrintTwice(std::shared_ptr<TestDll::SharedAlive>* self,std::shared_ptr<TestDll::SharedAll>* arg_printer){(*self)->PrintTwice(*arg_printer);}
 __declspec(dllexport) double __stdcall Wrappy_SharedAlive_HalfNine(std::shared_ptr<TestDll::SharedAlive>* self,TestDll::PointerDelete* arg_pdelete){return (*self)->HalfNine(arg_pdelete);}
+__declspec(dllexport) void __stdcall Wrappy_SharedAlive_SetEvent_TwoCallback(std::shared_ptr<TestDll::SharedAlive>* self, int(__stdcall* event)(int arg_two)){(*self)->TwoCallback = event;}
+__declspec(dllexport) void __stdcall Wrappy_SharedAlive_SetEvent_MakeDisposeCallback(std::shared_ptr<TestDll::SharedAlive>* self, TestDll::PointerDispose*(__stdcall* event)(TestDll::PointerDispose* arg_dispose)){(*self)->MakeDisposeCallback = event;}
+__declspec(dllexport) void __stdcall Wrappy_Delete_SharedAlive(std::shared_ptr<TestDll::SharedAlive>* self){{delete self;}}
 __declspec(dllexport) std::shared_ptr<TestDll::SharedAll>* __stdcall Wrappy_New_SharedAll(int arg_i){return new std::shared_ptr<TestDll::SharedAll>(new TestDll::SharedAll(arg_i));}
 __declspec(dllexport) void __stdcall Wrappy_SharedAll_Print(std::shared_ptr<TestDll::SharedAll>* self){(*self)->Print();}
 __declspec(dllexport) void __stdcall Wrappy_SharedAll_Write(std::shared_ptr<TestDll::SharedAll>* self,char* arg_l){(*self)->Write(arg_l);}

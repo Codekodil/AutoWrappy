@@ -7,6 +7,9 @@ using namespace std;
 
 int PointerDispose::Five()
 {
+	auto callback = OnFive;
+	if (callback)
+		callback();
 	return 5;
 }
 
