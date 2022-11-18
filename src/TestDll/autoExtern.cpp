@@ -10,7 +10,7 @@ __declspec(dllexport) void __stdcall Wrappy_PointerDelete_Nothing(TestDll::Point
 __declspec(dllexport) int __stdcall Wrappy_PointerDelete_Nine(TestDll::PointerDelete* self){return self->Nine();}
 __declspec(dllexport) float __stdcall Wrappy_PointerDelete_Half(TestDll::PointerDelete* self,float arg_a){return self->Half(arg_a);}
 __declspec(dllexport) double __stdcall Wrappy_PointerDelete_Add(TestDll::PointerDelete* self,int arg_l,double arg_r){return self->Add(arg_l,arg_r);}
-__declspec(dllexport) int __stdcall Wrappy_PointerDelete_Sum(TestDll::PointerDelete* self,int* arg_n,int arg_s){return self->Sum(arg_n,arg_s);}
+__declspec(dllexport) int __stdcall Wrappy_PointerDelete_Sum(TestDll::PointerDelete* self,int* p_arg_n,int l_arg_n){return self->Sum(std::span(p_arg_n,l_arg_n));}
 __declspec(dllexport) void __stdcall Wrappy_Delete_PointerDelete(TestDll::PointerDelete* self){{delete self;}}
 __declspec(dllexport) TestDll::PointerDispose* __stdcall Wrappy_New_PointerDispose(){return new TestDll::PointerDispose();}
 __declspec(dllexport) int __stdcall Wrappy_PointerDispose_Five(TestDll::PointerDispose* self){return self->Five();}
@@ -29,7 +29,7 @@ __declspec(dllexport) void __stdcall Wrappy_SharedAlive_SetEvent_MakeDisposeCall
 __declspec(dllexport) void __stdcall Wrappy_Delete_SharedAlive(std::shared_ptr<TestDll::SharedAlive>* self){{delete self;}}
 __declspec(dllexport) std::shared_ptr<TestDll::SharedAll>* __stdcall Wrappy_New_SharedAll(int arg_i){return new std::shared_ptr<TestDll::SharedAll>(new TestDll::SharedAll(arg_i));}
 __declspec(dllexport) void __stdcall Wrappy_SharedAll_Print(std::shared_ptr<TestDll::SharedAll>* self){(*self)->Print();}
-__declspec(dllexport) void __stdcall Wrappy_SharedAll_Write(std::shared_ptr<TestDll::SharedAll>* self,char* arg_l){(*self)->Write(arg_l);}
+__declspec(dllexport) void __stdcall Wrappy_SharedAll_Write(std::shared_ptr<TestDll::SharedAll>* self,char* p_arg_l,int l_arg_l){(*self)->Write(std::span(p_arg_l,l_arg_l));}
 __declspec(dllexport) void __stdcall Wrappy_SharedAll_WriteString(std::shared_ptr<TestDll::SharedAll>* self,char* arg_s){(*self)->WriteString(std::string(arg_s));}
 __declspec(dllexport) void __stdcall Wrappy_Delete_SharedAll(std::shared_ptr<TestDll::SharedAll>* self){{delete self;}}
 }

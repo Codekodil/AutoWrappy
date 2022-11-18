@@ -1,6 +1,7 @@
 #include "PointerDelete.h"
 
 using namespace TestDll;
+using namespace std;
 
 void PointerDelete::Nothing() {}
 
@@ -19,10 +20,10 @@ double PointerDelete::Add(int l, double r)
 	return l + r;
 }
 
-int TestDll::PointerDelete::Sum(int* n, int s)
+int TestDll::PointerDelete::Sum(span<int> n)
 {
 	int r = 0;
-	for (int i = 0; i < s; ++i)
-		r += n[i];
+	for (auto& i : n)
+		r += i;
 	return r;
 }

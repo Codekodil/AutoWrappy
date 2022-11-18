@@ -4,7 +4,7 @@ var pde = new PointerDelete();
 Console.WriteLine($"4.55: " + pde.Half((float)pde.Add(pde.Nine(), .1)));
 
 var a = new[] { 1, 2, 3, 4, 5 };
-Console.WriteLine($"15: " + pde.Sum(a, a.Length));
+Console.WriteLine($"15: " + pde.Sum(a));
 
 using (var pdi = new PointerDispose())
 {

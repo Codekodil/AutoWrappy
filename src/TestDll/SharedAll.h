@@ -1,6 +1,7 @@
 #pragma once
 
 #include<string>
+#include<span>
 
 //WRAPPY_SHARED
 //WRAPPY_DELETE
@@ -20,7 +21,7 @@ namespace TestDll
 	public:
 		SharedAll(int i);
 		void Print();
-		void Write(char* l);
+		void Write(std::span<char> l);
 		void WriteString(std::string s);
 		~SharedAll();
 	private:

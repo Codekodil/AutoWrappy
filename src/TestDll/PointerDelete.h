@@ -1,5 +1,7 @@
 #pragma once
 
+#include <span>
+
 //WRAPPY_POINTER
 //WRAPPY_DELETE
 
@@ -12,6 +14,6 @@ namespace TestDll
 		int Nine();
 		float Half(float a);
 		double Add(int l, double r);
-		int Sum(int* n, int s);
+		int Sum(std::span<int> n);
 	};
 }

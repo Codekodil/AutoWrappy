@@ -15,9 +15,9 @@ void SharedAll::Print()
 	cout << "Hoi " << _i << endl;
 }
 
-void SharedAll::Write(char* l)
+void SharedAll::Write(span<char> l)
 {
-	cout << l << " " << _i << endl;
+	cout << l.data() << " " << l.size() << " " << _i << endl;
 }
 
 void SharedAll::WriteString(std::string s)

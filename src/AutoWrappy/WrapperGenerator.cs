@@ -233,8 +233,6 @@ namespace AutoWrappy
 				if (tryParseType(i, out var type, out var length))
 				{
 					i += length;
-					if (type.Array = match(i, "*"))
-						i++;
 					var last = match(i, null, ")");
 					if (last || match(i, null, ","))
 					{
@@ -243,7 +241,7 @@ namespace AutoWrappy
 							Name = matches[0],
 							Type = type
 						};
-						elementLength = length + 1 + (type.Array ? 1 : 0) + (last ? 0 : 1);
+						elementLength = length + 1 + (last ? 0 : 1);
 						return true;
 					}
 				}
@@ -255,33 +253,53 @@ namespace AutoWrappy
 			{
 				type = null;
 				elementLength = 0;
+				bool span;
+				if (match(i, "std", ":", ":", "span", "<"))
+				{
+					span = true;
+					i += 5;
+				}
+				else
+					span = false;
 				if (match(i, "std", ":", ":", "string"))
 				{
+					if (span && !match(i + 4, ">"))
+						return false;
 					type = new ParsedType
 					{
-						Name = "string"
+						Name = "string",
+						Span = span
 					};
-					elementLength = 4;
+					elementLength = 4 + (span ? 6 : 0);
 					return true;
 				}
 				if (match(i, "std", ":", ":", "shared_ptr", "<", null, ">"))
 				{
+					var name = matches[0];
+					if (span && !match(i + 7, ">"))
+						return false;
 					type = new ParsedType
 					{
-						Name = matches[0],
-						Shared = true
+						Name = name,
+						Shared = true,
+						Span = span
 					};
-					elementLength = 7;
+					elementLength = 7 + (span ? 6 : 0);
 					return true;
 				}
 				else if (match(i, (string?)null))
 				{
+					var name = matches[0];
+					var pointer = match(i + 1, "*");
+					if (span && !match(i + (pointer ? 2 : 1), ">"))
+						return false;
 					type = new ParsedType
 					{
-						Name = matches[0],
-						Pointer = match(i, null, "*")
+						Name = name,
+						Pointer = match(i, null, "*"),
+						Span = span
 					};
-					elementLength = type.Pointer ? 2 : 1;
+					elementLength = (pointer ? 2 : 1) + (span ? 6 : 0);
 					return true;
 				}
 				return false;
@@ -337,29 +355,24 @@ namespace AutoWrappy
 			bool ValidateArgument(ParsedArgument argument)
 			{
 				if (argument.Type.Name == "void")
-					return !argument.Type.Shared && !argument.Type.Array && argument.Type.Pointer;
+					return !argument.Type.Shared && !argument.Type.Span && argument.Type.Pointer;
 				if (argument.Type.Name == "string")
-					return !argument.Type.Shared && !argument.Type.Pointer && !argument.Type.Array;
-				if (_buildInTypes.Contains(argument.Type.Name))
-				{
-					if (!argument.Type.Array && argument.Type.Pointer)
-					{
-						argument.Type.Array = true;
-						argument.Type.Pointer = false;
-					}
 					return !argument.Type.Shared && !argument.Type.Pointer;
-				}
+				if (_buildInTypes.Contains(argument.Type.Name))
+					return !argument.Type.Shared && !argument.Type.Pointer;
 				if (_parsedClasses.TryGetValue(argument.Type.Name, out var c))
-					return !argument.Type.Array && argument.Type.Pointer != argument.Type.Shared && argument.Type.Shared == c.Shared;
+					return argument.Type.Pointer != argument.Type.Shared && argument.Type.Shared == c.Shared;
 				return false;
 			}
 
 			bool ValidateReturnType(ParsedType type)
 			{
+				if (type.Span)
+					return false;
 				if (_buildInTypes.Contains(type.Name) || type.Name == "void")
-					return !type.Shared && !type.Array && (!type.Pointer || type.Name == "void" || type.Name == "char");
+					return !type.Shared && (!type.Pointer || type.Name == "void" || type.Name == "char");
 				if (_parsedClasses.TryGetValue(type.Name, out var c))
-					return !type.Array && type.Pointer != type.Shared && type.Shared == c.Shared;
+					return type.Pointer != type.Shared && type.Shared == c.Shared;
 				return false;
 			}
 		}
@@ -435,10 +448,16 @@ namespace AutoWrappy
 
 			string ExternalArguments(List<ParsedArgument> arg)
 			{
-				return string.Join("", arg.Select(Apply));
-				string Apply(ParsedArgument a)
+				return string.Join("", arg.SelectMany(Apply));
+				IEnumerable<string> Apply(ParsedArgument a)
 				{
-					return $",{TypeToString(a.Type)} arg_{a.Name.ToLower()}";
+					if (a.Type.Span)
+					{
+						yield return $",{TypeToString(a.Type)}* p_arg_{a.Name.ToLower()}";
+						yield return $",int l_arg_{a.Name.ToLower()}";
+					}
+					else
+						yield return $",{TypeToString(a.Type)} arg_{a.Name.ToLower()}";
 				}
 			}
 
@@ -447,6 +466,8 @@ namespace AutoWrappy
 				return string.Join(",", arg.Select(Apply));
 				string Apply(ParsedArgument a)
 				{
+					if (a.Type.Span)
+						return "std::span(" + "p_arg_" + a.Name.ToLower() + ",l_arg_" + a.Name.ToLower() + ")";
 					if (a.Type.Name == "string")
 						return $"std::string(arg_{a.Name.ToLower()})";
 					return (a.Type.Shared ? "*" : "") + "arg_" + a.Name.ToLower();
@@ -459,7 +480,6 @@ namespace AutoWrappy
 				var result = _parsedClasses.TryGetValue(t.Name, out var c) ? NameWithNamespaceCpp(c) : t.Name;
 				if (t.Shared) result = $"std::shared_ptr<{result}>*";
 				if (t.Pointer) result += '*';
-				if (t.Array) result += '*';
 				return result;
 			}
 		}
@@ -487,7 +507,7 @@ namespace AutoWrappy
 					if (c.Owner)
 						file.WriteLine("public bool Owner=true;");
 
-					if(undisposedSet)
+					if (undisposedSet)
 						file.WriteLine($"public static HashSet<{c.Name}>Undisposed{{get;}}=new HashSet<{c.Name}>();");
 
 					foreach (var f in c.Constructors)
@@ -629,12 +649,21 @@ namespace AutoWrappy
 
 			string AppliedArguments(List<ParsedArgument> arg)
 			{
-				return string.Join("", arg.Select(Apply));
-				string Apply(ParsedArgument a)
+				return string.Join("", arg.SelectMany(Apply));
+				IEnumerable<string> Apply(ParsedArgument a)
 				{
-					if (_parsedClasses.ContainsKey(a.Type.Name))
-						return "," + a.Name.ToLower() + @$".Native??throw new ObjectDisposedException(""{a.Type.Name}"")";
-					return "," + a.Name.ToLower();
+					if (a.Type.Span)
+					{
+						yield return "," + a.Name.ToLower();
+						yield return "," + a.Name.ToLower() + ".Length";
+					}
+					else
+					{
+						if (_parsedClasses.ContainsKey(a.Type.Name))
+							yield return "," + a.Name.ToLower() + @$".Native??throw new ObjectDisposedException(""{a.Type.Name}"")";
+						else
+							yield return "," + a.Name.ToLower();
+					}
 				}
 			}
 
@@ -646,16 +675,23 @@ namespace AutoWrappy
 					result = NameWithNamespaceCs(c);
 				else if (t.Shared || t.Pointer)
 					result = "IntPtr";
-				if (t.Array) result += "[]";
+				if (t.Span)
+					result += "[]";
 				return result;
 			}
 
 			string NativeExternalArguments(List<ParsedArgument> arg, bool prefix)
 			{
-				return string.Join("", arg.Select(Apply));
-				string Apply(ParsedArgument a)
+				return string.Join("", arg.SelectMany(Apply));
+				IEnumerable<string> Apply(ParsedArgument a)
 				{
-					return $",{NativeTypeToString(a.Type)} {(prefix ? "arg_" : "")}{a.Name.ToLower()}";
+					if (a.Type.Span)
+					{
+						yield return $",{NativeTypeToString(a.Type)}[] {(prefix ? "p_arg_" : "")}{a.Name.ToLower()}";
+						yield return $",int {(prefix ? "l_arg_" : "")}{a.Name.ToLower()}";
+					}
+					else
+						yield return $",{NativeTypeToString(a.Type)} {(prefix ? "arg_" : "")}{a.Name.ToLower()}";
 				}
 			}
 
@@ -664,7 +700,6 @@ namespace AutoWrappy
 				var result = t.Name;
 				if (t.Name == "char") result = "byte";
 				if (t.Shared || t.Pointer) result = "IntPtr";
-				if (t.Array) result += "[]";
 				return result;
 			}
 		}

@@ -4,7 +4,7 @@ namespace TestDll{internal class PointerDelete{public IntPtr? Native;public Poin
 [System.Runtime.InteropServices.DllImport("TestDll")]private static extern int Wrappy_PointerDelete_Nine(IntPtr self);public int Nine(){return Wrappy_PointerDelete_Nine(Native??IntPtr.Zero);}
 [System.Runtime.InteropServices.DllImport("TestDll")]private static extern float Wrappy_PointerDelete_Half(IntPtr self,float arg_a);public float Half(float a){return Wrappy_PointerDelete_Half(Native??IntPtr.Zero,a);}
 [System.Runtime.InteropServices.DllImport("TestDll")]private static extern double Wrappy_PointerDelete_Add(IntPtr self,int arg_l,double arg_r);public double Add(int l,double r){return Wrappy_PointerDelete_Add(Native??IntPtr.Zero,l,r);}
-[System.Runtime.InteropServices.DllImport("TestDll")]private static extern int Wrappy_PointerDelete_Sum(IntPtr self,int[] arg_n,int arg_s);public int Sum(int[] n,int s){return Wrappy_PointerDelete_Sum(Native??IntPtr.Zero,n,s);}
+[System.Runtime.InteropServices.DllImport("TestDll")]private static extern int Wrappy_PointerDelete_Sum(IntPtr self,int[] p_arg_n,int l_arg_n);public int Sum(int[] n){return Wrappy_PointerDelete_Sum(Native??IntPtr.Zero,n,n.Length);}
 [System.Runtime.InteropServices.DllImport("TestDll")]private static extern void Wrappy_Delete_PointerDelete(IntPtr self);
 ~PointerDelete(){Wrappy_Delete_PointerDelete(Native??IntPtr.Zero);}
 }}
@@ -39,7 +39,7 @@ private readonly object Locker=new object();
 public bool Owner=true;
 [System.Runtime.InteropServices.DllImport("TestDll")]private static extern IntPtr Wrappy_New_SharedAll(int arg_i);public SharedAll(int i){Native=Wrappy_New_SharedAll(i);}
 [System.Runtime.InteropServices.DllImport("TestDll")]private static extern void Wrappy_SharedAll_Print(IntPtr self);public void Print(){if(!Native.HasValue)throw new ObjectDisposedException("SharedAll");lock(Locker){if(!Native.HasValue)throw new ObjectDisposedException("SharedAll");Wrappy_SharedAll_Print(Native??IntPtr.Zero);}}
-[System.Runtime.InteropServices.DllImport("TestDll")]private static extern void Wrappy_SharedAll_Write(IntPtr self,byte[] arg_l);public void Write(byte[] l){if(!Native.HasValue)throw new ObjectDisposedException("SharedAll");lock(Locker){if(!Native.HasValue)throw new ObjectDisposedException("SharedAll");Wrappy_SharedAll_Write(Native??IntPtr.Zero,l);}}
+[System.Runtime.InteropServices.DllImport("TestDll")]private static extern void Wrappy_SharedAll_Write(IntPtr self,byte[] p_arg_l,int l_arg_l);public void Write(byte[] l){if(!Native.HasValue)throw new ObjectDisposedException("SharedAll");lock(Locker){if(!Native.HasValue)throw new ObjectDisposedException("SharedAll");Wrappy_SharedAll_Write(Native??IntPtr.Zero,l,l.Length);}}
 [System.Runtime.InteropServices.DllImport("TestDll")]private static extern void Wrappy_SharedAll_WriteString(IntPtr self,string arg_s);public void WriteString(string s){if(!Native.HasValue)throw new ObjectDisposedException("SharedAll");lock(Locker){if(!Native.HasValue)throw new ObjectDisposedException("SharedAll");Wrappy_SharedAll_WriteString(Native??IntPtr.Zero,s);}}
 [System.Runtime.InteropServices.DllImport("TestDll")]private static extern void Wrappy_Delete_SharedAll(IntPtr self);
 public void Dispose(){if(!Native.HasValue)throw new ObjectDisposedException("SharedAll");lock(Locker){if(!Native.HasValue)throw new ObjectDisposedException("SharedAll");if(Owner){Wrappy_Delete_SharedAll(Native.Value);Native=null;}}}
