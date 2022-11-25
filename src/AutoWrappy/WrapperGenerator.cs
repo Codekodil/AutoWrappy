@@ -387,6 +387,7 @@ namespace AutoWrappy
 				foreach (var include in _parsedClasses.Values.Select(c => c.SourcePath).Distinct())
 					file.WriteLine(@$"#include""{Path.GetRelativePath(Path.GetDirectoryName(path)!, include)}""");
 				file.WriteLine("#include<memory>");
+				file.WriteLine("#include<vector>");
 				file.WriteLine("#include<string>");
 
 				file.WriteLine(@"extern ""C""{");
@@ -397,24 +398,37 @@ namespace AutoWrappy
 					foreach (var f in c.Constructors)
 					{
 						file.Write($"__declspec(dllexport) {TypeToString(new ParsedType { Name = c.Name, Shared = c.Shared, Pointer = !c.Shared })} __stdcall ");
-						file.Write($"Wrappy_New_{c.Name}({ExternalArguments(f.Arguments).TrimStart(',')})");
+						file.Write($"Wrappy_New_{c.Name}({ExternalArguments(f.Arguments).TrimStart(',')}){{");
+						WritePreactions(f.Arguments);
 						if (c.Shared)
-							file.WriteLine(@$"{{return new {selfType}(new {NameWithNamespaceCpp(c)}({AppliedArguments(f.Arguments)}));}}");
+							file.Write(@$"auto inner_result=new {selfType}(new {NameWithNamespaceCpp(c)}({AppliedArguments(f.Arguments)}));");
 						else
-							file.WriteLine(@$"{{return new {selfType}({AppliedArguments(f.Arguments)});}}");
+							file.Write(@$"auto inner_result=new {selfType}({AppliedArguments(f.Arguments)});");
+						WritePostactions(f.Arguments);
+						file.WriteLine("return inner_result;}");
 					}
 					foreach (var f in c.Functions)
 					{
-						var returnFormat = "{0}";
+						var actionFormat = "{0};";
+						var returnFormat = "";
 						if (_parsedClasses.TryGetValue(f.Return.Name, out var returnC) && returnC.Shared)
-							returnFormat = $"return new std::shared_ptr<{NameWithNamespaceCpp(returnC)}>({{0}})";
+						{
+							actionFormat = $"auto inner_result=new std::shared_ptr<{NameWithNamespaceCpp(returnC)}>({{0}});";
+							returnFormat = "return inner_result;";
+						}
 						else if (f.Return.Name != "void" || f.Return.Pointer)
-							returnFormat = "return {0}";
+						{
+							actionFormat = "auto inner_result={0};";
+							returnFormat = "return inner_result;";
+						}
 
 						file.Write($"__declspec(dllexport) {TypeToString(f.Return)} __stdcall ");
 						file.Write($"Wrappy_{c.Name}_{f.Name}({selfType}* self{ExternalArguments(f.Arguments)}){{");
-						file.Write(String.Format(returnFormat, $"{selfAccess}->{f.Name}({AppliedArguments(f.Arguments)})"));
-						file.WriteLine(";}");
+						WritePreactions(f.Arguments);
+						file.Write(string.Format(actionFormat, $"{selfAccess}->{f.Name}({AppliedArguments(f.Arguments)})"));
+						WritePostactions(f.Arguments);
+						file.Write(returnFormat);
+						file.WriteLine("}");
 					}
 					foreach (var e in c.Events)
 					{
@@ -428,6 +442,39 @@ namespace AutoWrappy
 						file.Write("__declspec(dllexport) void __stdcall ");
 						file.Write($"Wrappy_Delete_{c.Name}({selfType}* self)");
 						file.WriteLine(@"{{delete self;}}");
+					}
+					void WritePreactions(IEnumerable<ParsedArgument> args)
+					{
+						foreach (var a in args)
+							if (a.Type.Span)
+							{
+								if (a.Type.Shared)
+								{
+									file.Write($"std::vector<{TypeToString(a.Type, false)}> vec_arg_{a.Name.ToLower()}(l_arg_{a.Name.ToLower()});");
+									file.Write($"std::span<{TypeToString(a.Type, false)}> span_arg_{a.Name.ToLower()}(&vec_arg_{a.Name.ToLower()}[0],l_arg_{a.Name.ToLower()});");
+									file.Write($"for(int i=0;i<l_arg_{a.Name.ToLower()};++i)");
+									file.Write($"if(p_arg_{a.Name.ToLower()}[i])");
+									file.Write($"vec_arg_{a.Name.ToLower()}[i]=*(p_arg_{a.Name.ToLower()}[i]);");
+								}
+								else
+									file.Write($"std::span<{TypeToString(a.Type, false)}> span_arg_{a.Name.ToLower()}(p_arg_{a.Name.ToLower()},l_arg_{a.Name.ToLower()});");
+							}
+					}
+					void WritePostactions(IEnumerable<ParsedArgument> args)
+					{
+						foreach (var a in args)
+							if (a.Type.Span)
+							{
+								if (a.Type.Shared)
+								{
+									file.Write($"for(int i=0;i<l_arg_{a.Name.ToLower()};++i)");
+									file.Write($"if(vec_arg_{a.Name.ToLower()}[i]){{");
+									file.Write($"if(!p_arg_{a.Name.ToLower()}[i]||*(p_arg_{a.Name.ToLower()}[i])!=vec_arg_{a.Name.ToLower()}[i])");
+									file.Write($"p_arg_{a.Name.ToLower()}[i]=new {TypeToString(a.Type, false)}(vec_arg_{a.Name.ToLower()}[i]);");
+									file.Write("}else ");
+									file.Write($"p_arg_{a.Name.ToLower()}[i]=nullptr;");
+								}
+							}
 					}
 				}
 				file.Write("}");
@@ -467,18 +514,23 @@ namespace AutoWrappy
 				string Apply(ParsedArgument a)
 				{
 					if (a.Type.Span)
-						return "std::span(" + "p_arg_" + a.Name.ToLower() + ",l_arg_" + a.Name.ToLower() + ")";
+						return "span_arg_" + a.Name.ToLower();
 					if (a.Type.Name == "string")
 						return $"std::string(arg_{a.Name.ToLower()})";
 					return (a.Type.Shared ? "*" : "") + "arg_" + a.Name.ToLower();
 				}
 			}
 
-			string TypeToString(ParsedType t)
+			string TypeToString(ParsedType t, bool sharedHasPointer = true)
 			{
 				if (t.Name == "string") return "char*";
 				var result = _parsedClasses.TryGetValue(t.Name, out var c) ? NameWithNamespaceCpp(c) : t.Name;
-				if (t.Shared) result = $"std::shared_ptr<{result}>*";
+				if (t.Shared)
+				{
+					result = $"std::shared_ptr<{result}>";
+					if (sharedHasPointer)
+						result += "*";
+				}
 				if (t.Pointer) result += '*';
 				return result;
 			}
@@ -516,8 +568,10 @@ namespace AutoWrappy
 						file.Write($"private static extern IntPtr Wrappy_New_{c.Name}");
 						file.Write($"({NativeExternalArguments(f.Arguments, true).TrimStart(',')});");
 
-						file.Write($"public {c.Name}({ExternalArguments(f.Arguments, false).TrimStart(',')})");
-						file.Write($"{{Native=Wrappy_New_{c.Name}({AppliedArguments(f.Arguments).TrimStart(',')});");
+						file.Write($"public {c.Name}({ExternalArguments(f.Arguments, false).TrimStart(',')}){{");
+						WritePreactions(f.Arguments);
+						file.Write($"Native=Wrappy_New_{c.Name}({AppliedArguments(f.Arguments).TrimStart(',')});");
+						WritePostactions(f.Arguments);
 						if (undisposedSet)
 							file.Write($"lock(Undisposed)Undisposed.Add(this);");
 						file.WriteLine($"}}");
@@ -531,12 +585,24 @@ namespace AutoWrappy
 						file.Write($"public {TypeToString(f.Return)} {f.Name}");
 						file.Write($"({ExternalArguments(f.Arguments, false).TrimStart(',')}){{");
 						if (c.Dispose) file.Write(lockStatement);
-						var returnFormat = "{0}";
+
+						var actionFormat = "{0};";
+						var returnFormat = "";
 						if (_parsedClasses.TryGetValue(f.Return.Name, out var returnC))
-							returnFormat = $"return new {NameWithNamespaceCs(returnC)}((IntPtr?){{0}})";
+						{
+							actionFormat = $"var inner_result=new {NameWithNamespaceCs(returnC)}((IntPtr?){{0}});";
+							returnFormat = "return inner_result;";
+						}
 						else if (f.Return.Name != "void" || f.Return.Pointer)
-							returnFormat = "return {0}";
-						file.Write(string.Format(returnFormat, $"Wrappy_{c.Name}_{f.Name}(Native??IntPtr.Zero{AppliedArguments(f.Arguments)})") + ";");
+						{
+							actionFormat = "var inner_result={0};";
+							returnFormat = "return inner_result;";
+						}
+
+						WritePreactions(f.Arguments);
+						file.Write(string.Format(actionFormat, $"Wrappy_{c.Name}_{f.Name}(Native??IntPtr.Zero{AppliedArguments(f.Arguments)})"));
+						WritePostactions(f.Arguments);
+						file.Write(returnFormat);
 						if (c.Dispose) file.Write("}");
 						file.WriteLine("}");
 					}
@@ -555,7 +621,7 @@ namespace AutoWrappy
 
 						var returnFormat = "{0}";
 						if (_parsedClasses.TryGetValue(e.Return.Name, out var returnC))
-							returnFormat = @$"return {{0}}.Native??throw new ObjectDisposedException(""{returnC?.Name}"")";
+							returnFormat = @$"return {{0}}?.Native??IntPtr.Zero";
 						else if (e.Return.Name != "void" || e.Return.Pointer)
 							returnFormat = "return {0}??default";
 
@@ -568,7 +634,7 @@ namespace AutoWrappy
 						string DelegateArgument(ParsedArgument a)
 						{
 							if (_parsedClasses.TryGetValue(a.Type.Name, out var returnC))
-								return $"new {NameWithNamespaceCs(returnC)}((IntPtr?){a.Name})";
+								return $"{a.Name}==IntPtr.Zero?null:new {NameWithNamespaceCs(returnC)}((IntPtr?){a.Name})";
 							return a.Name.ToLower();
 						}
 						file.Write($";}};Wrappy_{c.Name}_SetEvent_{e.Name}(Native??IntPtr.Zero,{e.Name}Delegate_Native_Object);}}}}}}");
@@ -622,6 +688,29 @@ namespace AutoWrappy
 								file.WriteLine($"Wrappy_Delete_{c.Name}(Native??IntPtr.Zero);}}");
 						}
 					}
+					void WritePreactions(IEnumerable<ParsedArgument> args)
+					{
+						foreach (var a in args)
+							if (a.Type.Span && (a.Type.Shared || a.Type.Pointer))
+							{
+								file.Write($"var native_{a.Name.ToLower()}=new IntPtr[{a.Name.ToLower()}.Length];");
+								file.Write($"for(var i=0;i<{a.Name.ToLower()}.Length;i++)");
+								file.Write($"native_{a.Name.ToLower()}[i]={a.Name.ToLower()}[i]?.Native??IntPtr.Zero;");
+							}
+					}
+					void WritePostactions(IEnumerable<ParsedArgument> args)
+					{
+						foreach (var a in args)
+							if (a.Type.Span && (a.Type.Shared || a.Type.Pointer))
+							{
+								file.Write($"for(var i=0;i<{a.Name.ToLower()}.Length;i++)");
+								file.Write($"if(native_{a.Name.ToLower()}[i]==IntPtr.Zero)");
+								file.Write($"{a.Name.ToLower()}[i]=null;");
+								file.Write("else{");
+								file.Write($"if(native_{a.Name.ToLower()}[i]!={a.Name.ToLower()}[i]?.Native)");
+								file.Write($"{a.Name.ToLower()}[i]=new {a.Type.Name}((IntPtr?)native_{a.Name.ToLower()}[i]);}}");
+							}
+					}
 
 					file.WriteLine("}}");
 				}
@@ -654,13 +743,16 @@ namespace AutoWrappy
 				{
 					if (a.Type.Span)
 					{
-						yield return "," + a.Name.ToLower();
+						if (a.Type.Shared || a.Type.Pointer)
+							yield return ",native_" + a.Name.ToLower();
+						else
+							yield return "," + a.Name.ToLower();
 						yield return "," + a.Name.ToLower() + ".Length";
 					}
 					else
 					{
 						if (_parsedClasses.ContainsKey(a.Type.Name))
-							yield return "," + a.Name.ToLower() + @$".Native??throw new ObjectDisposedException(""{a.Type.Name}"")";
+							yield return "," + a.Name.ToLower() + @$"?.Native??IntPtr.Zero";
 						else
 							yield return "," + a.Name.ToLower();
 					}
@@ -672,7 +764,7 @@ namespace AutoWrappy
 				var result = t.Name;
 				if (t.Name == "char") result = "byte";
 				if (_parsedClasses.TryGetValue(t.Name, out var c))
-					result = NameWithNamespaceCs(c);
+					result = NameWithNamespaceCs(c) + "?";
 				else if (t.Shared || t.Pointer)
 					result = "IntPtr";
 				if (t.Span)

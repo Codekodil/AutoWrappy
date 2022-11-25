@@ -21,7 +21,7 @@ PointerDispose* TestDll::SharedAlive::MakeDispose()
 
 shared_ptr<SharedAll> TestDll::SharedAlive::MakePrint(int i) { return make_shared<SharedAll>(i); }
 
-void TestDll::SharedAlive::PrintTwice(std::shared_ptr<SharedAll> printer)
+void SharedAlive::PrintTwice(std::shared_ptr<SharedAll> printer)
 {
 	auto callback = PrintTwiceCallback;
 	if (callback)
@@ -30,4 +30,36 @@ void TestDll::SharedAlive::PrintTwice(std::shared_ptr<SharedAll> printer)
 	printer->Print();
 }
 
-double TestDll::SharedAlive::HalfNine(PointerDelete* pDelete) { return pDelete->Half(static_cast<int>(pDelete->Nine())); }
+double SharedAlive::HalfNine(PointerDelete* pDelete) { return pDelete->Half(static_cast<float>(pDelete->Nine())); }
+
+void SharedAlive::FillWithDispose(span<PointerDispose*> disposes)
+{
+	bool first = true;
+	for (auto& dispose : disposes)
+	{
+		if (first)
+		{
+			first = false;
+			dispose = nullptr;
+			continue;
+		}
+		if (!dispose)
+			dispose = new PointerDispose();
+	}
+}
+
+void SharedAlive::FillWithPrint(span<shared_ptr<SharedAll>> printers)
+{
+	bool first = true;
+	for (auto& printer : printers)
+	{
+		if (first)
+		{
+			first = false;
+			printer = nullptr;
+			continue;
+		}
+		if (!printer)
+			printer = make_shared<SharedAll>(69);
+	}
+}

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ImportTests": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
