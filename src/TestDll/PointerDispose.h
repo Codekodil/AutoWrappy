@@ -9,7 +9,7 @@ namespace TestDll
 	{
 		int Five();
 		void* ThisPointer();
-		void PointerValue(void* pointer);
+		int PointerValue(void* pointer);
 		void(__stdcall* OnFive)();
 	};
 }

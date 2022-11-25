@@ -18,7 +18,7 @@ void* PointerDispose::ThisPointer()
 	return this;
 }
 
-void PointerDispose::PointerValue(void* pointer)
+int PointerDispose::PointerValue(void* pointer)
 {
-	cout << "Pointer value [" << pointer << "]: " << *static_cast<int*>(pointer) << endl;
+	return *reinterpret_cast<int*>(pointer);
 }
