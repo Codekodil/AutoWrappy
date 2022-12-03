@@ -517,7 +517,7 @@ namespace AutoWrappy
 						return "span_arg_" + a.Name.ToLower();
 					if (a.Type.Name == "string")
 						return $"std::string(arg_{a.Name.ToLower()})";
-					return (a.Type.Shared ? "*" : "") + "arg_" + a.Name.ToLower();
+					return string.Format(a.Type.Shared ? "{0}?*{0}:nullptr" : "{0}", "arg_" + a.Name.ToLower());
 				}
 			}
 
