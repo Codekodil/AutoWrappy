@@ -816,7 +816,7 @@ namespace AutoWrappy
 						_ => throw new NotImplementedException()
 					};
 				if (t.Span && !ignoreSpan)
-					result += "[]";
+					result = $"Span<{result}>";
 				return result;
 			}
 
