@@ -6,5 +6,6 @@
 		public bool Pointer { get; set; }
 		public bool Span { get; set; }
 		public bool Shared { get; set; }
+		public bool Glm { get; set; }
 	}
 }

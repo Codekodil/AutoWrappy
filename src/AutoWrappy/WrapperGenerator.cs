@@ -18,6 +18,7 @@ namespace AutoWrappy
 		}
 
 		private readonly Dictionary<string, ParsedClass> _parsedClasses;
+		private bool _usesGlm;
 
 		private const string WrappyPointer = "//WRAPPY_POINTER";
 		private const string WrappyShared = "//WRAPPY_SHARED";
@@ -27,7 +28,7 @@ namespace AutoWrappy
 
 		private static readonly string[] _buildInTypes = "bool;char;short;int;long;float;double".Split(';');
 
-		private static IEnumerable<ParsedClass> ParseFile(string filePath)
+		private IEnumerable<ParsedClass> ParseFile(string filePath)
 		{
 			var all = File.ReadAllText(filePath);
 
@@ -287,6 +288,25 @@ namespace AutoWrappy
 					elementLength = 7 + (span ? 6 : 0);
 					return true;
 				}
+				if (match(i, "glm", ":", ":", null))
+				{
+					var name = matches[0];
+					switch (name)
+					{
+						case "vec2":
+						case "vec3":
+						case "vec4":
+							_usesGlm = true;
+							type = new ParsedType
+							{
+								Name = name,
+								Span = span,
+								Glm = true
+							};
+							elementLength = 4 + (span ? 6 : 0);
+							return true;
+					}
+				}
 				else if (match(i, (string?)null))
 				{
 					var name = matches[0];
@@ -340,7 +360,7 @@ namespace AutoWrappy
 		{
 			c.Constructors.RemoveAll(c => !c.Arguments.All(ValidateArgument));
 			c.Functions.RemoveAll(f => !ValidateReturnType(f.Return) || !f.Arguments.All(ValidateArgument));
-			c.Events.RemoveAll(e => !ValidateReturnType(e.Return) || !e.Arguments.All(ValidateArgument));
+			c.Events.RemoveAll(e => !ValidateReturnType(e.Return) || !e.Arguments.All(ValidateArgument) || e.Arguments.Any(a => a.Type.Glm));
 
 			c.Events.RemoveAll(e =>
 			{
@@ -358,6 +378,8 @@ namespace AutoWrappy
 					return !argument.Type.Shared && !argument.Type.Span && argument.Type.Pointer;
 				if (argument.Type.Name == "string")
 					return !argument.Type.Shared && !argument.Type.Pointer;
+				if (argument.Type.Glm)
+					return !argument.Type.Shared && !argument.Type.Pointer;
 				if (_buildInTypes.Contains(argument.Type.Name))
 					return !argument.Type.Shared && !argument.Type.Pointer;
 				if (_parsedClasses.TryGetValue(argument.Type.Name, out var c))
@@ -368,6 +390,8 @@ namespace AutoWrappy
 			bool ValidateReturnType(ParsedType type)
 			{
 				if (type.Span)
+					return false;
+				if (type.Glm)
 					return false;
 				if (_buildInTypes.Contains(type.Name) || type.Name == "void")
 					return !type.Shared && (!type.Pointer || type.Name == "void" || type.Name == "char");
@@ -389,6 +413,8 @@ namespace AutoWrappy
 				file.WriteLine("#include<memory>");
 				file.WriteLine("#include<vector>");
 				file.WriteLine("#include<string>");
+				if (_usesGlm) file.WriteLine("#include<glm/glm.hpp>");
+
 
 				file.WriteLine(@"extern ""C""{");
 				foreach (var c in _parsedClasses.Values)
@@ -517,13 +543,14 @@ namespace AutoWrappy
 						return "span_arg_" + a.Name.ToLower();
 					if (a.Type.Name == "string")
 						return $"std::string(arg_{a.Name.ToLower()})";
-					return string.Format(a.Type.Shared ? "{0}?*{0}:nullptr" : "{0}", "arg_" + a.Name.ToLower());
+					return string.Format(a.Type.Shared ? "{0}?*{0}:nullptr" : a.Type.Glm && !a.Type.Span ? "*{0}" : "{0}", "arg_" + a.Name.ToLower());
 				}
 			}
 
 			string TypeToString(ParsedType t, bool sharedHasPointer = true)
 			{
 				if (t.Name == "string") return "char*";
+				if (t.Glm) return $"glm::{t.Name}{(t.Span ? "" : "*")}";
 				var result = _parsedClasses.TryGetValue(t.Name, out var c) ? NameWithNamespaceCpp(c) : t.Name;
 				if (t.Shared)
 				{
@@ -564,11 +591,13 @@ namespace AutoWrappy
 
 					foreach (var f in c.Constructors)
 					{
+						var isUnsafe = IsUnsafe(f.Arguments);
+						var unsafeKeyword = isUnsafe ? "unsafe " : "";
 						file.Write(@$"[System.Runtime.InteropServices.DllImport(""{dll}"")]");
-						file.Write($"private static extern IntPtr Wrappy_New_{c.Name}");
+						file.Write($"{unsafeKeyword}private static extern IntPtr Wrappy_New_{c.Name}");
 						file.Write($"({NativeExternalArguments(f.Arguments, true).TrimStart(',')});");
 
-						file.Write($"public {c.Name}({ExternalArguments(f.Arguments, false).TrimStart(',')}){{");
+						file.Write($"{unsafeKeyword}public {c.Name}({ExternalArguments(f.Arguments, false).TrimStart(',')}){{");
 						WritePreactions(f.Arguments);
 						file.Write($"Native=Wrappy_New_{c.Name}({AppliedArguments(f.Arguments).TrimStart(',')});");
 						WritePostactions(f.Arguments);
@@ -578,11 +607,13 @@ namespace AutoWrappy
 					}
 					foreach (var f in c.Functions)
 					{
+						var isUnsafe = IsUnsafe(f.Arguments);
+						var unsafeKeyword = isUnsafe ? "unsafe " : "";
 						file.Write(@$"[System.Runtime.InteropServices.DllImport(""{dll}"")]");
-						file.Write($"private static extern {NativeTypeToString(f.Return)} Wrappy_{c.Name}_{f.Name}");
+						file.Write($"{unsafeKeyword}private static extern {NativeTypeToString(f.Return)} Wrappy_{c.Name}_{f.Name}");
 						file.Write($"(IntPtr self{NativeExternalArguments(f.Arguments, true)});");
 
-						file.Write($"public {TypeToString(f.Return)} {f.Name}");
+						file.Write($"{unsafeKeyword}public {TypeToString(f.Return)} {f.Name}");
 						file.Write($"({ExternalArguments(f.Arguments, false).TrimStart(',')}){{");
 						if (c.Dispose) file.Write(lockStatement);
 
@@ -753,13 +784,15 @@ namespace AutoWrappy
 					{
 						if (_parsedClasses.ContainsKey(a.Type.Name))
 							yield return "," + a.Name.ToLower() + @$"?.Native??IntPtr.Zero";
+						else if (a.Type.Glm)
+							yield return ",&" + a.Name.ToLower();
 						else
 							yield return "," + a.Name.ToLower();
 					}
 				}
 			}
 
-			string TypeToString(ParsedType t)
+			string TypeToString(ParsedType t, bool ignoreSpan = false)
 			{
 				var result = t.Name;
 				if (t.Name == "char") result = "byte";
@@ -767,7 +800,15 @@ namespace AutoWrappy
 					result = NameWithNamespaceCs(c) + "?";
 				else if (t.Shared || t.Pointer)
 					result = "IntPtr";
-				if (t.Span)
+				else if (t.Glm)
+					result = "System.Numerics." + t.Name switch
+					{
+						"vec2" => "Vector2",
+						"vec3" => "Vector3",
+						"vec4" => "Vector4",
+						_ => throw new NotImplementedException()
+					};
+				if (t.Span && !ignoreSpan)
 					result += "[]";
 				return result;
 			}
@@ -792,8 +833,12 @@ namespace AutoWrappy
 				var result = t.Name;
 				if (t.Name == "char") result = "byte";
 				if (t.Shared || t.Pointer) result = "IntPtr";
+				if (t.Glm) result = t.Span ? TypeToString(t, true) : "void*";
 				return result;
 			}
+
+			bool IsUnsafe(List<ParsedArgument> arg) =>
+				arg.Any(a => a.Type.Glm && !a.Type.Span);
 		}
 
 

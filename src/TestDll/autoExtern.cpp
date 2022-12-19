@@ -5,6 +5,7 @@
 #include<memory>
 #include<vector>
 #include<string>
+#include<glm/glm.hpp>
 extern "C"{
 __declspec(dllexport) TestDll::PointerDelete* __stdcall Wrappy_New_PointerDelete(){auto inner_result=new TestDll::PointerDelete();return inner_result;}
 __declspec(dllexport) void __stdcall Wrappy_PointerDelete_Nothing(TestDll::PointerDelete* self){self->Nothing();}
@@ -17,6 +18,8 @@ __declspec(dllexport) TestDll::PointerDispose* __stdcall Wrappy_New_PointerDispo
 __declspec(dllexport) int __stdcall Wrappy_PointerDispose_Five(TestDll::PointerDispose* self){auto inner_result=self->Five();return inner_result;}
 __declspec(dllexport) void* __stdcall Wrappy_PointerDispose_ThisPointer(TestDll::PointerDispose* self){auto inner_result=self->ThisPointer();return inner_result;}
 __declspec(dllexport) int __stdcall Wrappy_PointerDispose_PointerValue(TestDll::PointerDispose* self,void* arg_pointer){auto inner_result=self->PointerValue(arg_pointer);return inner_result;}
+__declspec(dllexport) float __stdcall Wrappy_PointerDispose_Sum(TestDll::PointerDispose* self,glm::vec3* arg_vec){auto inner_result=self->Sum(*arg_vec);return inner_result;}
+__declspec(dllexport) void __stdcall Wrappy_PointerDispose_Normalice(TestDll::PointerDispose* self,glm::vec2* p_arg_vecs,int l_arg_vecs){std::span<glm::vec2> span_arg_vecs(p_arg_vecs,l_arg_vecs);self->Normalice(span_arg_vecs);}
 __declspec(dllexport) void __stdcall Wrappy_PointerDispose_SetEvent_OnFive(TestDll::PointerDispose* self, void(__stdcall* event)()){self->OnFive = event;}
 __declspec(dllexport) void __stdcall Wrappy_Delete_PointerDispose(TestDll::PointerDispose* self){{delete self;}}
 __declspec(dllexport) std::shared_ptr<TestDll::SharedAlive>* __stdcall Wrappy_New_SharedAlive(double arg_a){auto inner_result=new std::shared_ptr<TestDll::SharedAlive>(new TestDll::SharedAlive(arg_a));return inner_result;}

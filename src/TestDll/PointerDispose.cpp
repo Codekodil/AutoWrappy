@@ -22,3 +22,14 @@ int PointerDispose::PointerValue(void* pointer)
 {
 	return *reinterpret_cast<int*>(pointer);
 }
+
+float TestDll::PointerDispose::Sum(glm::vec3 vec)
+{
+	return glm::dot(vec, glm::vec3(1.0));
+}
+
+void TestDll::PointerDispose::Normalice(span<glm::vec2> vecs)
+{
+	for (auto& vec : vecs)
+		vec = glm::normalize(vec);
+}
