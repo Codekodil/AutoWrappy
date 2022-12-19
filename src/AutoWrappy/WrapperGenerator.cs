@@ -598,12 +598,14 @@ namespace AutoWrappy
 						file.Write($"({NativeExternalArguments(f.Arguments, true).TrimStart(',')});");
 
 						file.Write($"{unsafeKeyword}public {c.Name}({ExternalArguments(f.Arguments, false).TrimStart(',')}){{");
+						WriteFixed(f.Arguments);
+						file.Write("{");
 						WritePreactions(f.Arguments);
 						file.Write($"Native=Wrappy_New_{c.Name}({AppliedArguments(f.Arguments).TrimStart(',')});");
 						WritePostactions(f.Arguments);
 						if (undisposedSet)
 							file.Write($"lock(Undisposed)Undisposed.Add(this);");
-						file.WriteLine($"}}");
+						file.WriteLine("}}");
 					}
 					foreach (var f in c.Functions)
 					{
@@ -630,12 +632,14 @@ namespace AutoWrappy
 							returnFormat = "return inner_result;";
 						}
 
+						WriteFixed(f.Arguments);
+						file.Write("{");
 						WritePreactions(f.Arguments);
 						file.Write(string.Format(actionFormat, $"Wrappy_{c.Name}_{f.Name}(Native??IntPtr.Zero{AppliedArguments(f.Arguments)})"));
 						WritePostactions(f.Arguments);
 						file.Write(returnFormat);
 						if (c.Dispose) file.Write("}");
-						file.WriteLine("}");
+						file.WriteLine("}}");
 					}
 					foreach (var e in c.Events)
 					{
@@ -719,12 +723,18 @@ namespace AutoWrappy
 								file.WriteLine($"Wrappy_Delete_{c.Name}(Native??IntPtr.Zero);}}");
 						}
 					}
+					void WriteFixed(IEnumerable<ParsedArgument> args)
+					{
+						foreach(var a in args)
+							if(a.Type.Span && !(a.Type.Shared || a.Type.Pointer))
+								file.Write($"fixed(void*native_{a.Name.ToLower()}={a.Name.ToLower()})");
+					}
 					void WritePreactions(IEnumerable<ParsedArgument> args)
 					{
 						foreach (var a in args)
 							if (a.Type.Span && (a.Type.Shared || a.Type.Pointer))
 							{
-								file.Write($"var native_{a.Name.ToLower()}=new IntPtr[{a.Name.ToLower()}.Length];");
+								file.Write($"IntPtr*native_{a.Name.ToLower()}=stackalloc IntPtr[{a.Name.ToLower()}.Length];");
 								file.Write($"for(var i=0;i<{a.Name.ToLower()}.Length;i++)");
 								file.Write($"native_{a.Name.ToLower()}[i]={a.Name.ToLower()}[i]?.Native??IntPtr.Zero;");
 							}
@@ -774,10 +784,7 @@ namespace AutoWrappy
 				{
 					if (a.Type.Span)
 					{
-						if (a.Type.Shared || a.Type.Pointer)
-							yield return ",native_" + a.Name.ToLower();
-						else
-							yield return "," + a.Name.ToLower();
+						yield return ",native_" + a.Name.ToLower();
 						yield return "," + a.Name.ToLower() + ".Length";
 					}
 					else
@@ -820,7 +827,7 @@ namespace AutoWrappy
 				{
 					if (a.Type.Span)
 					{
-						yield return $",{NativeTypeToString(a.Type)}[] {(prefix ? "p_arg_" : "")}{a.Name.ToLower()}";
+						yield return $",void* {(prefix ? "p_arg_" : "")}{a.Name.ToLower()}";
 						yield return $",int {(prefix ? "l_arg_" : "")}{a.Name.ToLower()}";
 					}
 					else
@@ -838,7 +845,7 @@ namespace AutoWrappy
 			}
 
 			bool IsUnsafe(List<ParsedArgument> arg) =>
-				arg.Any(a => a.Type.Glm && !a.Type.Span);
+				arg.Any(a => a.Type.Glm || a.Type.Span);
 		}
 
 

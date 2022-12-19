@@ -53,9 +53,10 @@ namespace ImportTests
 				vecs[2].X = -1;
 				vecs[2].Y = -1;
 				obj.Normalice(vecs);
-				///Assert.AreEqual(new Vector2(1, 0), vecs[0]);
-				///Assert.AreEqual(new Vector2(0, 1), vecs[1]);
-				///Assert.AreEqual(new Vector2(1, 1), vecs[2]);
+				Assert.AreEqual(new Vector2(1, 0), vecs[0]);
+				Assert.AreEqual(new Vector2(0, 1), vecs[1]);
+				Assert.AreEqual(-.7, vecs[2].X, .1);
+				Assert.AreEqual(-.7, vecs[2].Y, .1);
 			}
 		}
 	}
