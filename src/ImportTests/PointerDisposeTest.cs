@@ -59,5 +59,28 @@ namespace ImportTests
 				Assert.AreEqual(-.7, vecs[2].Y, .1);
 			}
 		}
+
+		[TestMethod]
+		public void GlmMatrix()
+		{
+			using (var obj = new PointerDispose())
+			{
+				var vecs = new Vector4[4];
+				vecs[1].X = 2;
+				vecs[2].Y = 2;
+				vecs[3].Z = 2;
+				for (int i = 0; i < vecs.Length; i++)
+					vecs[i].W = 1;
+
+				var transform = Matrix4x4.CreateRotationY(MathF.PI * .5f) * Matrix4x4.CreateScale(.5f, 1, 2) * Matrix4x4.CreateTranslation(10, 20, 30);
+
+				obj.Transform(vecs, transform);
+
+				Assert.AreEqual(new Vector4(10, 20, 30, 1), vecs[0]);
+				Assert.AreEqual(new Vector4(10, 20, 26, 1), vecs[1]);
+				Assert.AreEqual(new Vector4(10, 22, 30, 1), vecs[2]);
+				Assert.AreEqual(new Vector4(11, 20, 30, 1), vecs[3]);
+			}
+		}
 	}
 }

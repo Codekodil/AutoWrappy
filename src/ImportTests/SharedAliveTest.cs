@@ -37,10 +37,10 @@ namespace ImportTests
 			obj.MakeDisposeCallback += d =>
 			{
 				callbackCount++;
-				d.Dispose();
+				d!.Dispose();
 				return dispose;
 			};
-			using (var subObj = obj.MakeDispose())
+			using (var subObj = obj.MakeDispose()!)
 			{
 				subObj.OnFive += () =>
 				{

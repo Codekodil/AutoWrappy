@@ -296,6 +296,8 @@ namespace AutoWrappy
 						case "vec2":
 						case "vec3":
 						case "vec4":
+						case "mat4":
+						case "quat":
 							_usesGlm = true;
 							type = new ParsedType
 							{
@@ -413,7 +415,11 @@ namespace AutoWrappy
 				file.WriteLine("#include<memory>");
 				file.WriteLine("#include<vector>");
 				file.WriteLine("#include<string>");
-				if (_usesGlm) file.WriteLine("#include<glm/glm.hpp>");
+				if (_usesGlm)
+				{
+					file.WriteLine("#include<glm/glm.hpp>");
+					file.WriteLine("#include<glm/gtc/quaternion.hpp>");
+				}
 
 
 				file.WriteLine(@"extern ""C""{");
@@ -813,6 +819,8 @@ namespace AutoWrappy
 						"vec2" => "Vector2",
 						"vec3" => "Vector3",
 						"vec4" => "Vector4",
+						"mat4" => "Matrix4x4",
+						"quat" => "Quaternion",
 						_ => throw new NotImplementedException()
 					};
 				if (t.Span && !ignoreSpan)

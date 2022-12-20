@@ -20,7 +20,7 @@ double PointerDelete::Add(int l, double r)
 	return l + r;
 }
 
-int TestDll::PointerDelete::Sum(span<int> n)
+int PointerDelete::Sum(span<int> n)
 {
 	int r = 0;
 	for (auto& i : n)

@@ -5,6 +5,7 @@
 
 #include<span>
 #include<glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
 
 namespace TestDll
 {
@@ -16,6 +17,7 @@ namespace TestDll
 		void(__stdcall* OnFive)();
 		float Sum(glm::vec3 vec);
 		void Normalice(std::span<glm::vec2> vecs);
+		void Transform(std::span<glm::vec4> vecs, glm::mat4 transform);
 	};
 }
 

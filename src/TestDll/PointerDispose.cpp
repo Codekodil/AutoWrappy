@@ -4,6 +4,7 @@
 
 using namespace TestDll;
 using namespace std;
+using namespace glm;
 
 int PointerDispose::Five()
 {
@@ -23,13 +24,19 @@ int PointerDispose::PointerValue(void* pointer)
 	return *reinterpret_cast<int*>(pointer);
 }
 
-float TestDll::PointerDispose::Sum(glm::vec3 vec)
+float PointerDispose::Sum(vec3 vec)
 {
-	return glm::dot(vec, glm::vec3(1.0));
+	return dot(vec, vec3(1.0));
 }
 
-void TestDll::PointerDispose::Normalice(span<glm::vec2> vecs)
+void PointerDispose::Normalice(span<vec2> vecs)
 {
 	for (auto& vec : vecs)
-		vec = glm::normalize(vec);
+		vec = normalize(vec);
+}
+
+void PointerDispose::Transform(span<vec4> vecs, mat4 transform)
+{
+	for (auto& vec : vecs)
+		vec = transform * vec;
 }
