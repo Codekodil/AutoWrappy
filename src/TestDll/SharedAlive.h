@@ -14,6 +14,7 @@ namespace TestDll
 	struct SharedAliveBase
 	{
 		int One();
+		int OneValue = 10;
 	};
 
 	class SharedAlive :public SharedAliveBase

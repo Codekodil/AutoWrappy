@@ -26,7 +26,6 @@ __declspec(dllexport) void __stdcall Wrappy_PointerDispose_Normalice(TestDll::Po
 __declspec(dllexport) void __stdcall Wrappy_PointerDispose_Transform(TestDll::PointerDispose* self,glm::vec4* p_arg_vecs,int l_arg_vecs,glm::mat4* arg_transform){std::span<glm::vec4> span_arg_vecs(p_arg_vecs,l_arg_vecs);self->Transform(span_arg_vecs,*arg_transform);}
 __declspec(dllexport) void __stdcall Wrappy_PointerDispose_SetEvent_OnFive(TestDll::PointerDispose* self, void(__stdcall* event)()){self->OnFive = event;}
 __declspec(dllexport) void __stdcall Wrappy_Delete_PointerDispose(TestDll::PointerDispose* self){delete self;}
-__declspec(dllexport) TestDll::DisposeBase* __stdcall Wrappy_ToBase_PointerDispose(TestDll::PointerDispose* self){return static_cast<TestDll::DisposeBase*>(self);}
 __declspec(dllexport) std::shared_ptr<TestDll::SharedAlive>* __stdcall Wrappy_New_SharedAlive(double arg_a){auto inner_result=new std::shared_ptr<TestDll::SharedAlive>(new TestDll::SharedAlive(arg_a));return inner_result;}
 __declspec(dllexport) int __stdcall Wrappy_SharedAlive_Two(std::shared_ptr<TestDll::SharedAlive>* self){auto inner_result=(*self)->Two();return inner_result;}
 __declspec(dllexport) TestDll::PointerDispose* __stdcall Wrappy_SharedAlive_MakeDispose(std::shared_ptr<TestDll::SharedAlive>* self){auto inner_result=(*self)->MakeDispose();return inner_result;}

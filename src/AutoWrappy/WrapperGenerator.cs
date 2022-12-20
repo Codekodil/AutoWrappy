@@ -486,15 +486,12 @@ namespace AutoWrappy
 						file.Write($"Wrappy_Delete_{c.Name}({selfType}* self)");
 						file.WriteLine("{delete self;}");
 					}
-					if (_classBase.TryGetValue(c, out var baseC))
+					if (_classBase.TryGetValue(c, out var baseC) && c.Shared)
 					{
-						var resultType = new ParsedType { Name = baseC.Name, Shared = c.Shared, Pointer = !c.Shared };
+						var resultType = new ParsedType { Name = baseC.Name, Shared = true };
 						file.Write($"__declspec(dllexport) {TypeToString(resultType)} __stdcall ");
 						file.Write($"Wrappy_ToBase_{c.Name}({selfType}* self)");
-						if (c.Shared)
-							file.WriteLine($"{{return self?new std::shared_ptr<{NameWithNamespaceCpp(baseC)}>(static_pointer_cast<{NameWithNamespaceCpp(baseC)}>(*self)):nullptr;}}");
-						else
-							file.WriteLine($"{{return static_cast<{NameWithNamespaceCpp(baseC)}*>(self);}}");
+						file.WriteLine($"{{return self?new std::shared_ptr<{NameWithNamespaceCpp(baseC)}>(static_pointer_cast<{NameWithNamespaceCpp(baseC)}>(*self)):nullptr;}}");
 					}
 					void WritePreactions(IEnumerable<ParsedArgument> args)
 					{
@@ -753,15 +750,23 @@ namespace AutoWrappy
 					if (_classBase.TryGetValue(c, out var baseC))
 					{
 						var resultType = new ParsedType { Name = baseC.Name, Shared = c.Shared, Pointer = !c.Shared };
-						file.Write(@$"[System.Runtime.InteropServices.DllImport(""{dll}"")]");
-						file.Write($"private static extern IntPtr Wrappy_ToBase_{c.Name}");
-						file.Write($"(IntPtr self);");
+						if (c.Shared)
+						{
+							file.Write(@$"[System.Runtime.InteropServices.DllImport(""{dll}"")]");
+							file.Write($"private static extern IntPtr Wrappy_ToBase_{c.Name}");
+							file.Write($"(IntPtr self);");
 
-						file.Write($"public {TypeToString(resultType).TrimEnd('?')} As{baseC.Name}()");
-						file.Write($"{{var inner_result=new {NameWithNamespaceCs(baseC)}((IntPtr?)Wrappy_ToBase_{c.Name}(Native??IntPtr.Zero));");
-						if (baseC.Owner && !baseC.Shared)
-							file.Write($"inner_result.Owner=false;");
-						file.WriteLine("return inner_result;}");
+							file.Write($"public {TypeToString(resultType).TrimEnd('?')} As{baseC.Name}()");
+							file.WriteLine($"=>new {NameWithNamespaceCs(baseC)}((IntPtr?)Wrappy_ToBase_{c.Name}(Native??IntPtr.Zero));");
+						}
+						else
+						{
+							file.Write($"public {TypeToString(resultType).TrimEnd('?')} As{baseC.Name}()");
+							file.Write($"{{var result=new {NameWithNamespaceCs(baseC)}(Native);");
+							if (baseC.Owner)
+								file.Write($"result.Owner=false;");
+							file.WriteLine("return result;}");
+						}
 					}
 					void WriteFixed(IEnumerable<ParsedArgument> args)
 					{

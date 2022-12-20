@@ -31,7 +31,7 @@ private delegate void OnFiveDelegate_Native();private OnFiveDelegate_Native? OnF
 private void ClearDelegates(){if(!Native.HasValue)return;lock(Locker){if(!Native.HasValue)return;if(OnFiveDelegate_Native_Object!=null){Wrappy_PointerDispose_SetEvent_OnFive(Native??IntPtr.Zero,null);OnFiveDelegate_Native_Object=null;}}}
 [System.Runtime.InteropServices.DllImport("TestDll")]private static extern void Wrappy_Delete_PointerDispose(IntPtr self);
 public void Dispose(){if(!Native.HasValue)throw new ObjectDisposedException("PointerDispose");lock(Locker){if(!Native.HasValue)throw new ObjectDisposedException("PointerDispose");lock(Undisposed)Undisposed.Remove(this);ClearDelegates();Wrappy_Delete_PointerDispose(Native.Value);Native=null;}}
-[System.Runtime.InteropServices.DllImport("TestDll")]private static extern IntPtr Wrappy_ToBase_PointerDispose(IntPtr self);public TestDll.DisposeBase AsDisposeBase(){var inner_result=new TestDll.DisposeBase((IntPtr?)Wrappy_ToBase_PointerDispose(Native??IntPtr.Zero));inner_result.Owner=false;return inner_result;}
+public TestDll.DisposeBase AsDisposeBase(){var result=new TestDll.DisposeBase(Native);result.Owner=false;return result;}
 }}
 namespace TestDll{internal class SharedAlive{public IntPtr? Native;public SharedAlive(IntPtr? native){Native=native;}
 private readonly object Locker=new object();
@@ -48,7 +48,7 @@ private delegate IntPtr MakeDisposeCallbackDelegate_Native(IntPtr arg_dispose);p
 private void ClearDelegates(){if(!Native.HasValue)return;lock(Locker){if(!Native.HasValue)return;if(TwoCallbackDelegate_Native_Object!=null){Wrappy_SharedAlive_SetEvent_TwoCallback(Native??IntPtr.Zero,null);TwoCallbackDelegate_Native_Object=null;}if(MakeDisposeCallbackDelegate_Native_Object!=null){Wrappy_SharedAlive_SetEvent_MakeDisposeCallback(Native??IntPtr.Zero,null);MakeDisposeCallbackDelegate_Native_Object=null;}}}
 [System.Runtime.InteropServices.DllImport("TestDll")]private static extern void Wrappy_Delete_SharedAlive(IntPtr self);
 ~SharedAlive(){ClearDelegates();Wrappy_Delete_SharedAlive(Native??IntPtr.Zero);}
-[System.Runtime.InteropServices.DllImport("TestDll")]private static extern IntPtr Wrappy_ToBase_SharedAlive(IntPtr self);public TestDll.SharedAliveBase AsSharedAliveBase(){var inner_result=new TestDll.SharedAliveBase((IntPtr?)Wrappy_ToBase_SharedAlive(Native??IntPtr.Zero));return inner_result;}
+[System.Runtime.InteropServices.DllImport("TestDll")]private static extern IntPtr Wrappy_ToBase_SharedAlive(IntPtr self);public TestDll.SharedAliveBase AsSharedAliveBase()=>new TestDll.SharedAliveBase((IntPtr?)Wrappy_ToBase_SharedAlive(Native??IntPtr.Zero));
 }}
 namespace TestDll{internal class SharedAliveBase{public IntPtr? Native;public SharedAliveBase(IntPtr? native){Native=native;}
 public bool Owner=true;

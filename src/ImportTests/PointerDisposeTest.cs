@@ -84,13 +84,13 @@ namespace ImportTests
 		}
 
 		[TestMethod]
-		public void BaseSameAddress()
+		public void BaseMethodInvoke()
 		{
 			using (var obj = new PointerDispose())
 			{
 				var objBase = obj.AsDisposeBase();
 
-				Assert.AreEqual(obj.Native, objBase.Native);
+				Assert.AreEqual(1, objBase.Ten());
 			}
 		}
 	}

@@ -12,6 +12,7 @@ namespace TestDll
 	struct DisposeBase
 	{
 		int Ten();
+		int TenValue = 1;
 	};
 
 	struct PointerDispose :public DisposeBase

@@ -5,13 +5,14 @@ using namespace std;
 
 int SharedAliveBase::One()
 {
-	return 1;
+	return OneValue;
 }
 
 SharedAlive::SharedAlive(double a) { _a = a; }
 
 int SharedAlive::Two()
 {
+	OneValue = 1;
 	auto value = static_cast<int>((One() + One()) * _a);
 	auto callback = TwoCallback;
 	return callback ? callback(value) : value;

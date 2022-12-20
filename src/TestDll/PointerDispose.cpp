@@ -8,11 +8,12 @@ using namespace glm;
 
 int DisposeBase::Ten()
 {
-	return 10;
+	return TenValue;
 }
 
 int PointerDispose::Five()
 {
+	TenValue = 10;
 	auto callback = OnFive;
 	if (callback)
 		callback();
@@ -21,7 +22,7 @@ int PointerDispose::Five()
 
 void* PointerDispose::ThisPointer()
 {
-	return this;
+	return &OnFive;
 }
 
 int PointerDispose::PointerValue(void* pointer)

@@ -95,5 +95,15 @@ namespace ImportTests
 			foreach (var d in printers.Concat(new[] { p1, p2 }).Distinct())
 				d?.Dispose();
 		}
+
+		[TestMethod]
+		public void BaseMethodInvoke()
+		{
+			var obj = new SharedAlive(10);
+
+			var objBase = obj.AsSharedAliveBase();
+
+			Assert.AreEqual(10, objBase.One());
+		}
 	}
 }
