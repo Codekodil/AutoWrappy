@@ -6,7 +6,6 @@
 #include<vector>
 #include<string>
 #include<glm/glm.hpp>
-#include<glm/gtc/quaternion.hpp>
 extern "C"{
 __declspec(dllexport) TestDll::PointerDelete* __stdcall Wrappy_New_PointerDelete(){auto inner_result=new TestDll::PointerDelete();return inner_result;}
 __declspec(dllexport) void __stdcall Wrappy_PointerDelete_Nothing(TestDll::PointerDelete* self){self->Nothing();}
