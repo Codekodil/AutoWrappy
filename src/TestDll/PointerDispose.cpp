@@ -6,12 +6,17 @@ using namespace TestDll;
 using namespace std;
 using namespace glm;
 
+int DisposeBase::Ten()
+{
+	return 10;
+}
+
 int PointerDispose::Five()
 {
 	auto callback = OnFive;
 	if (callback)
 		callback();
-	return 5;
+	return Ten() / 2;
 }
 
 void* PointerDispose::ThisPointer()

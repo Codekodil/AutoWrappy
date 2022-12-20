@@ -3,11 +3,16 @@
 using namespace TestDll;
 using namespace std;
 
+int SharedAliveBase::One()
+{
+	return 1;
+}
+
 SharedAlive::SharedAlive(double a) { _a = a; }
 
 int SharedAlive::Two()
 {
-	auto value = static_cast<int>(2 * _a);
+	auto value = static_cast<int>((One() + One()) * _a);
 	auto callback = TwoCallback;
 	return callback ? callback(value) : value;
 }

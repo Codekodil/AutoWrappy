@@ -12,5 +12,6 @@
 		public bool Delete { get; set; }
 		public bool Dispose { get; set; }
 		public bool Owner { get; set; }
+		public string? Derives { get; set; }
 	}
 }

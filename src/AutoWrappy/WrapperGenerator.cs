@@ -15,9 +15,23 @@ namespace AutoWrappy
 
 			foreach (var c in _parsedClasses.Values)
 				RemoveInvalidFunctions(c);
+
+			_classBase = new Dictionary<ParsedClass, ParsedClass>();
+			foreach (var c in _parsedClasses.Values)
+				if (c.Derives != null && _parsedClasses.TryGetValue(c.Derives, out var baseC))
+				{
+					if (c.Shared == baseC.Shared)
+					{
+						baseC.Owner = true;
+						_classBase[c] = baseC;
+					}
+					else
+						Console.WriteLine($"Wrappy: No class to base convertion because of mismatch between shared and pointer ({c.Name}::{baseC.Name})");
+				}
 		}
 
 		private readonly Dictionary<string, ParsedClass> _parsedClasses;
+		private readonly Dictionary<ParsedClass, ParsedClass> _classBase;
 		private bool _usesGlm;
 
 		private const string WrappyPointer = "//WRAPPY_POINTER";
@@ -93,10 +107,11 @@ namespace AutoWrappy
 						isPublic = false;
 					else
 					{
-						var isStruct = match(i, "struct", null, "{") || match(i, "struct", null, ":");
-						if (isStruct || match(i, "class", null, "{") || match(i, "class", null, ":"))
+						var isStruct = match(i, "struct", null, "{") || match(i, "struct", null, ":", null, null);
+						if (isStruct || match(i, "class", null, "{") || match(i, "class", null, ":", null, null))
 						{
 							var name = matches[0];
+							var derives = matches.Count == 3 && matches[1] == "public" ? matches[2] : null;
 							isPublic = isStruct;
 							if (currentClass != null)
 								yield return currentClass;
@@ -108,7 +123,8 @@ namespace AutoWrappy
 								Shared = shared,
 								Delete = delete,
 								Dispose = dispose,
-								Owner = owner
+								Owner = owner,
+								Derives = derives
 							};
 							Console.WriteLine($"Wrappy: found class {NameWithNamespaceCpp(currentClass)}");
 							i += 2;
@@ -418,7 +434,7 @@ namespace AutoWrappy
 
 
 				file.WriteLine(@"extern ""C""{");
-				foreach (var c in _parsedClasses.Values)
+				foreach (var c in _parsedClasses.Values.OrderBy(c => c.Name))
 				{
 					var selfType = c.Shared ? $"std::shared_ptr<{NameWithNamespaceCpp(c)}>" : NameWithNamespaceCpp(c);
 					var selfAccess = c.Shared ? "(*self)" : "self";
@@ -468,7 +484,17 @@ namespace AutoWrappy
 					{
 						file.Write("__declspec(dllexport) void __stdcall ");
 						file.Write($"Wrappy_Delete_{c.Name}({selfType}* self)");
-						file.WriteLine(@"{{delete self;}}");
+						file.WriteLine("{delete self;}");
+					}
+					if (_classBase.TryGetValue(c, out var baseC))
+					{
+						var resultType = new ParsedType { Name = baseC.Name, Shared = c.Shared, Pointer = !c.Shared };
+						file.Write($"__declspec(dllexport) {TypeToString(resultType)} __stdcall ");
+						file.Write($"Wrappy_ToBase_{c.Name}({selfType}* self)");
+						if (c.Shared)
+							file.WriteLine($"{{return self?new std::shared_ptr<{NameWithNamespaceCpp(baseC)}>(static_pointer_cast<{NameWithNamespaceCpp(baseC)}>(*self)):nullptr;}}");
+						else
+							file.WriteLine($"{{return static_cast<{NameWithNamespaceCpp(baseC)}*>(self);}}");
 					}
 					void WritePreactions(IEnumerable<ParsedArgument> args)
 					{
@@ -569,7 +595,7 @@ namespace AutoWrappy
 			string resultingFile;
 			using (var file = new StringWriter())
 			{
-				foreach (var c in _parsedClasses.Values)
+				foreach (var c in _parsedClasses.Values.OrderBy(c => c.Name))
 				{
 					var lockStatement = c.Dispose ? @$"if(!Native.HasValue)throw new ObjectDisposedException(""{c.Name}"");" : "";
 					lockStatement = $"{lockStatement}lock(Locker){{{lockStatement}";
@@ -724,10 +750,23 @@ namespace AutoWrappy
 								file.WriteLine($"Wrappy_Delete_{c.Name}(Native??IntPtr.Zero);}}");
 						}
 					}
+					if (_classBase.TryGetValue(c, out var baseC))
+					{
+						var resultType = new ParsedType { Name = baseC.Name, Shared = c.Shared, Pointer = !c.Shared };
+						file.Write(@$"[System.Runtime.InteropServices.DllImport(""{dll}"")]");
+						file.Write($"private static extern IntPtr Wrappy_ToBase_{c.Name}");
+						file.Write($"(IntPtr self);");
+
+						file.Write($"public {TypeToString(resultType).TrimEnd('?')} As{baseC.Name}()");
+						file.Write($"{{var inner_result=new {NameWithNamespaceCs(baseC)}((IntPtr?)Wrappy_ToBase_{c.Name}(Native??IntPtr.Zero));");
+						if (baseC.Owner && !baseC.Shared)
+							file.Write($"inner_result.Owner=false;");
+						file.WriteLine("return inner_result;}");
+					}
 					void WriteFixed(IEnumerable<ParsedArgument> args)
 					{
-						foreach(var a in args)
-							if(a.Type.Span && !(a.Type.Shared || a.Type.Pointer))
+						foreach (var a in args)
+							if (a.Type.Span && !(a.Type.Shared || a.Type.Pointer))
 								file.Write($"fixed(void*native_{a.Name.ToLower()}={a.Name.ToLower()})");
 					}
 					void WritePreactions(IEnumerable<ParsedArgument> args)

@@ -82,5 +82,16 @@ namespace ImportTests
 				Assert.AreEqual(new Vector4(11, 20, 30, 1), vecs[3]);
 			}
 		}
+
+		[TestMethod]
+		public void BaseSameAddress()
+		{
+			using (var obj = new PointerDispose())
+			{
+				var objBase = obj.AsDisposeBase();
+
+				Assert.AreEqual(obj.Native, objBase.Native);
+			}
+		}
 	}
 }

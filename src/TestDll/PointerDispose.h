@@ -9,7 +9,12 @@
 
 namespace TestDll
 {
-	struct PointerDispose
+	struct DisposeBase
+	{
+		int Ten();
+	};
+
+	struct PointerDispose :public DisposeBase
 	{
 		int Five();
 		void* ThisPointer();

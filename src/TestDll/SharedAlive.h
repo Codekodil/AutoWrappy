@@ -11,7 +11,12 @@
 
 namespace TestDll
 {
-	class SharedAlive
+	struct SharedAliveBase
+	{
+		int One();
+	};
+
+	class SharedAlive :public SharedAliveBase
 	{
 	public:
 		SharedAlive(double a);
