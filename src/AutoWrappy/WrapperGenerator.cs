@@ -434,6 +434,7 @@ namespace AutoWrappy
 
 
 				file.WriteLine(@"extern ""C""{");
+				file.WriteLine("__declspec(dllexport) void* __stdcall Wrappy_Shared_Ptr_Get(std::shared_ptr<void>* self){return self->get();}");
 				foreach (var c in _parsedClasses.Values.OrderBy(c => c.Name))
 				{
 					var selfType = c.Shared ? $"std::shared_ptr<{NameWithNamespaceCpp(c)}>" : NameWithNamespaceCpp(c);
@@ -592,6 +593,8 @@ namespace AutoWrappy
 			string resultingFile;
 			using (var file = new StringWriter())
 			{
+				foreach (var ns in _parsedClasses.Values.Select(c => NamespaceCs(c)).Distinct())
+					file.WriteLine($"namespace {ns}{{interface IWrapper{{IntPtr GetAddress();}}}}");
 				foreach (var c in _parsedClasses.Values.OrderBy(c => c.Name))
 				{
 					var lockStatement = c.Dispose ? @$"if(!Native.HasValue)throw new ObjectDisposedException(""{c.Name}"");" : "";
@@ -600,11 +603,27 @@ namespace AutoWrappy
 					var undisposedSet = c.Dispose && !c.Delete;
 
 					file.Write($"namespace {NamespaceCs(c)}{{");
-					file.Write($"internal class {c.Name}");
+					file.Write($"internal class {c.Name}:IWrapper");
 					if (c.Dispose)
-						file.Write(":IDisposable");
+						file.Write(",IDisposable");
 					file.Write("{public IntPtr? Native;");
-					file.WriteLine($"public {c.Name}(IntPtr? native){{Native=native;}}");
+					file.WriteLine($"public {c.Name}(IntPtr? native)=>Native=native;");
+					if (c.Shared)
+					{
+						file.Write(@$"[System.Runtime.InteropServices.DllImport(""{dll}"")]");
+						file.Write("private static extern IntPtr Wrappy_Shared_Ptr_Get(IntPtr self);");
+						if (c.Dispose)
+							file.WriteLine($"public IntPtr GetAddress(){{{lockStatement}return Wrappy_Shared_Ptr_Get(Native!.Value);}}}}");
+						else
+							file.WriteLine("public IntPtr GetAddress()=>Wrappy_Shared_Ptr_Get(Native!.Value);");
+					}
+					else
+					{
+						if (c.Dispose)
+							file.WriteLine($"public IntPtr GetAddress(){{{lockStatement}return Native.Value;}}}}");
+						else
+							file.WriteLine("public IntPtr GetAddress()=>Native!.Value;");
+					}
 					if (c.Dispose || c.Events.Count > 0)
 						file.WriteLine($"private readonly object Locker=new object();");
 					if (c.Owner)
@@ -659,7 +678,7 @@ namespace AutoWrappy
 						WriteFixed(f.Arguments);
 						file.Write("{");
 						WritePreactions(f.Arguments);
-						file.Write(string.Format(actionFormat, $"Wrappy_{c.Name}_{f.Name}(Native??IntPtr.Zero{AppliedArguments(f.Arguments)})"));
+						file.Write(string.Format(actionFormat, $"Wrappy_{c.Name}_{f.Name}(Native!.Value{AppliedArguments(f.Arguments)})"));
 						WritePostactions(f.Arguments);
 						file.Write(returnFormat);
 						if (c.Dispose) file.Write("}");

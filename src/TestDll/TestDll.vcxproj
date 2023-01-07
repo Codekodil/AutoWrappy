@@ -149,6 +149,7 @@
   <ItemGroup>
     <ClInclude Include="PointerDelete.h" />
     <ClInclude Include="PointerDispose.h" />
+    <ClInclude Include="SelfPointer.h" />
     <ClInclude Include="SharedAlive.h" />
     <ClInclude Include="SharedAll.h" />
   </ItemGroup>

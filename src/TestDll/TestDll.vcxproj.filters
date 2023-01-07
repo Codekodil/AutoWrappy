@@ -5,6 +5,7 @@
     <ClInclude Include="SharedAlive.h" />
     <ClInclude Include="PointerDispose.h" />
     <ClInclude Include="SharedAll.h" />
+    <ClInclude Include="SelfPointer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="PointerDelete.cpp" />
