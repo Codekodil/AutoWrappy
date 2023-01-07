@@ -4,8 +4,19 @@ namespace AutoWrappy
 {
 	public class WrapperGenerator
 	{
-		public WrapperGenerator(string searchPath)
+		private readonly Dictionary<string, string> _glmMapping;
+		public WrapperGenerator(string searchPath, Dictionary<string, string> glmMapping)
 		{
+			_glmMapping = glmMapping;
+
+			foreach (var defaultGlm in new Dictionary<string, string> {
+				{ "vec2", "Vector2" },
+				{ "vec3", "Vector3" },
+				{ "vec4", "Vector4" },
+				{ "mat4", "Matrix4x4" } })
+				if (!_glmMapping.ContainsKey(defaultGlm.Key))
+					_glmMapping[defaultGlm.Key] = "System.Numerics." + defaultGlm.Value;
+
 			var extensions = new[] { ".h", ".hpp" };
 			_parsedClasses = Directory
 				.GetFiles(searchPath, "*.*", SearchOption.AllDirectories)
@@ -307,21 +318,17 @@ namespace AutoWrappy
 				if (match(i, "glm", ":", ":", null))
 				{
 					var name = matches[0];
-					switch (name)
+					if (_glmMapping.ContainsKey(name))
 					{
-						case "vec2":
-						case "vec3":
-						case "vec4":
-						case "mat4":
-							_usesGlm = true;
-							type = new ParsedType
-							{
-								Name = name,
-								Span = span,
-								Glm = true
-							};
-							elementLength = 4 + (span ? 6 : 0);
-							return true;
+						_usesGlm = true;
+						type = new ParsedType
+						{
+							Name = name,
+							Span = span,
+							Glm = true
+						};
+						elementLength = 4 + (span ? 6 : 0);
+						return true;
 					}
 				}
 				else if (match(i, (string?)null))
@@ -872,14 +879,7 @@ namespace AutoWrappy
 				else if (t.Shared || t.Pointer)
 					result = "IntPtr";
 				else if (t.Glm)
-					result = "System.Numerics." + t.Name switch
-					{
-						"vec2" => "Vector2",
-						"vec3" => "Vector3",
-						"vec4" => "Vector4",
-						"mat4" => "Matrix4x4",
-						_ => throw new NotImplementedException()
-					};
+					result = _glmMapping[t.Name];
 				if (t.Span && !ignoreSpan)
 					result = $"Span<{result}>";
 				return result;

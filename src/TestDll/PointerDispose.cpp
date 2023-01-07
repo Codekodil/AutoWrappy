@@ -46,3 +46,10 @@ void PointerDispose::Transform(span<vec4> vecs, mat4 transform)
 	for (auto& vec : vecs)
 		vec = transform * vec;
 }
+
+void PointerDispose::Rotate(span<vec3> points, quat rotation)
+{
+	auto transform = glm::toMat3(rotation);
+	for (auto& point : points)
+		point = transform * point;
+}

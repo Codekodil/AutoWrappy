@@ -47,16 +47,18 @@ namespace ImportTests
 		{
 			using (var obj = new PointerDispose())
 			{
-				var vecs = new Vector2[3];
-				vecs[0].X = 2;
-				vecs[1].Y = .5f;
-				vecs[2].X = -1;
-				vecs[2].Y = -1;
+				var vecs = new TestVec2[3];
+				vecs[0].A = 2;
+				vecs[1].B = .5f;
+				vecs[2].A = -1;
+				vecs[2].B = -1;
 				obj.Normalice(vecs);
-				Assert.AreEqual(new Vector2(1, 0), vecs[0]);
-				Assert.AreEqual(new Vector2(0, 1), vecs[1]);
-				Assert.AreEqual(-.7, vecs[2].X, .1);
-				Assert.AreEqual(-.7, vecs[2].Y, .1);
+				Assert.AreEqual(1, vecs[0].A);
+				Assert.AreEqual(0, vecs[0].B);
+				Assert.AreEqual(0, vecs[1].A);
+				Assert.AreEqual(1, vecs[1].B);
+				Assert.AreEqual(-.7, vecs[2].A, .1);
+				Assert.AreEqual(-.7, vecs[2].B, .1);
 			}
 		}
 
@@ -80,6 +82,28 @@ namespace ImportTests
 				Assert.AreEqual(new Vector4(10, 20, 26, 1), vecs[1]);
 				Assert.AreEqual(new Vector4(10, 22, 30, 1), vecs[2]);
 				Assert.AreEqual(new Vector4(11, 20, 30, 1), vecs[3]);
+			}
+		}
+
+		[TestMethod]
+		public void GlmQuaternion()
+		{
+			using (var obj = new PointerDispose())
+			{
+				var vecs = new Vector3[4];
+				vecs[1].X = 1;
+				vecs[2].Y = 2;
+				vecs[3].Z = 3;
+
+				var rotation = Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(1, 1, 1)), MathF.PI * 2f / 3f);
+				var mappedRotation = new Vector4(rotation.X, rotation.Y, rotation.Z, rotation.W);
+
+				obj.Rotate(vecs, mappedRotation);
+
+				Assert.AreEqual(new Vector3(0), vecs[0]);
+				Assert.AreEqual(0, (vecs[1] - new Vector3(0, 1, 0)).Length(), .1);
+				Assert.AreEqual(0, (vecs[2] - new Vector3(0, 0, 2)).Length(), .1);
+				Assert.AreEqual(0, (vecs[3] - new Vector3(3, 0, 0)).Length(), .1);
 			}
 		}
 

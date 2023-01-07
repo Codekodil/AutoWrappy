@@ -2,7 +2,7 @@
   "profiles": {
     "AutoWrappy": {
       "commandName": "Project",
-      "commandLineArgs": "-d \"../../../../TestDll\" -cpp \"../../../../TestDll/autoExtern.cpp\" -cs \"../../../../ImportTests/autoImport.cs\" -dll \"TestDll\""
+      "commandLineArgs": "-d \"../../../../TestDll\" -cpp \"../../../../TestDll/autoExtern.cpp\" -cs \"../../../../ImportTests/autoImport.cs\" -dll \"TestDll\" -glmQuat \"System.Numerics.Vector4\" -glmVec2 \"ImportTests.TestVec2\""
     }
   }
 }

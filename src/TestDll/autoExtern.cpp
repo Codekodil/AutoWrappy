@@ -26,6 +26,7 @@ __declspec(dllexport) int __stdcall Wrappy_PointerDispose_PointerValue(TestDll::
 __declspec(dllexport) float __stdcall Wrappy_PointerDispose_Sum(TestDll::PointerDispose* self,glm::vec3* arg_vec){auto inner_result=self->Sum(*arg_vec);return inner_result;}
 __declspec(dllexport) void __stdcall Wrappy_PointerDispose_Normalice(TestDll::PointerDispose* self,glm::vec2* p_arg_vecs,int l_arg_vecs){std::span<glm::vec2> span_arg_vecs(p_arg_vecs,l_arg_vecs);self->Normalice(span_arg_vecs);}
 __declspec(dllexport) void __stdcall Wrappy_PointerDispose_Transform(TestDll::PointerDispose* self,glm::vec4* p_arg_vecs,int l_arg_vecs,glm::mat4* arg_transform){std::span<glm::vec4> span_arg_vecs(p_arg_vecs,l_arg_vecs);self->Transform(span_arg_vecs,*arg_transform);}
+__declspec(dllexport) void __stdcall Wrappy_PointerDispose_Rotate(TestDll::PointerDispose* self,glm::vec3* p_arg_points,int l_arg_points,glm::quat* arg_rotation){std::span<glm::vec3> span_arg_points(p_arg_points,l_arg_points);self->Rotate(span_arg_points,*arg_rotation);}
 __declspec(dllexport) void __stdcall Wrappy_PointerDispose_SetEvent_OnFive(TestDll::PointerDispose* self, void(__stdcall* event)()){self->OnFive = event;}
 __declspec(dllexport) void __stdcall Wrappy_Delete_PointerDispose(TestDll::PointerDispose* self){delete self;}
 __declspec(dllexport) std::shared_ptr<TestDll::SelfPointer>* __stdcall Wrappy_New_SelfPointer(){auto inner_result=new std::shared_ptr<TestDll::SelfPointer>(new TestDll::SelfPointer());return inner_result;}
